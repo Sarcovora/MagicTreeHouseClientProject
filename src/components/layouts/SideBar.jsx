@@ -1,14 +1,42 @@
-import { TreePine, Files, FormInput, Bell, Map, LogOut, Settings, ChevronDown } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import {
+  TreePine,
+  Files,
+  FormInput,
+  Bell,
+  Map,
+  LogOut,
+  Settings,
+  ChevronDown,
+  Home,
+  FileText,
+  ClipboardList,
+  Image,
+} from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
 const SideBar = () => {
+  const location = useLocation();
+
   const menuItems = [
-    { icon: <TreePine size={24} />, label: 'Properties', path: '/properties' },
-    { icon: <Files size={24} />, label: 'Documents', path: '/documents' },
-    { icon: <FormInput size={24} />, label: 'Forms', path: '/forms' },
-    { icon: <Bell size={24} />, label: 'Notifications', path: '/notifications' },
-    { icon: <Map size={24} />, label: 'Map', path: '/map' }
+    { icon: <TreePine size={24} />, label: "Properties", path: "/properties" },
+    { icon: <Files size={24} />, label: "Documents", path: "/documents" },
+    { icon: <FormInput size={24} />, label: "Forms", path: "/forms" },
+    {
+      icon: <Bell size={24} />,
+      label: "Notifications",
+      path: "/notifications",
+    },
+    { icon: <Map size={24} />, label: "Map", path: "/map" },
+    { icon: <Image size={24} />, label: "Photos", path: "/gallery" },
   ];
+
+  // Check if a path is active
+  const isActive = (path) => {
+    if (path === "/") {
+      return location.pathname === "/";
+    }
+    return location.pathname.startsWith(path);
+  };
 
   return (
     <div className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col">
@@ -26,7 +54,11 @@ const SideBar = () => {
           <Link
             key={index}
             to={item.path}
-            className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg mb-1 transition-colors"
+            className={`flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg mb-1 transition-colors ${
+              isActive(item.path)
+                ? "text-green-600 bg-green-50 border-l-4 border-green-600"
+                : ""
+            }`}
           >
             {item.icon}
             <span className="font-medium">{item.label}</span>
@@ -60,7 +92,9 @@ const SideBar = () => {
             <span>Settings</span>
           </Link>
           <button
-            onClick={() => {/* Handle logout */}}
+            onClick={() => {
+              /* Handle logout */
+            }}
             className="flex items-center space-x-3 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full"
           >
             <LogOut size={20} />

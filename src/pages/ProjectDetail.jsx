@@ -1,31 +1,26 @@
-import { useNavigate } from 'react-router-dom';
-import { TreePine, User, MapPin, Phone, Mail, ArrowLeft, Edit, Trash2 } from 'lucide-react';
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  TreePine,
+  User,
+  MapPin,
+  Phone,
+  Mail,
+  ArrowLeft,
+  Edit,
+  Trash2,
+} from "lucide-react";
+import projectsData from "../data/projectsData";
 
+/**
+ * ProjectDetail component displays detailed information about a specific project
+ */
 const ProjectDetail = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
 
-  // Mock data - in a real app, you'd fetch this based on the id
-  const project = {
-    id: 1,
-    name: 'ABCD Park',
-    landowner: 'John Doe',
-    location: 'California',
-    contact: {
-      phone: '+1 234 567 8900',
-      email: 'john@example.com'
-    },
-    metrics: {
-      canopyGrowth: '15% increase',
-      biodiversity: '24 species',
-      carbonOffset: '150 tons',
-      treesSurvival: '92%'
-    },
-    imageUrl: '../public/images/project-images/abcd.jpg',
-    description: 'A comprehensive reforestation project aimed at restoring native woodland...',
-    status: 'Active',
-    startDate: '2023-01-15',
-    lastUpdated: '2024-01-20'
-  };
+  // Find the project with the matching id
+  const project =
+    projectsData.find((p) => p.id === parseInt(id)) || projectsData[0];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -54,15 +49,17 @@ const ProjectDetail = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-8 py-8">
-        <div className="grid grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Left Column */}
-          <div className="col-span-2 space-y-8">
+          <div className="md:col-span-2 space-y-8">
             {/* Project Header */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
               <div className="flex items-start space-x-4">
                 <TreePine className="w-12 h-12 text-green-600" />
                 <div>
-                  <h1 className="text-2xl font-semibold mb-2">{project.name}</h1>
+                  <h1 className="text-2xl font-semibold mb-2">
+                    {project.name}
+                  </h1>
                   <div className="flex items-center text-gray-600">
                     <MapPin className="w-4 h-4 mr-2" />
                     {project.location}
@@ -73,7 +70,9 @@ const ProjectDetail = () => {
 
             {/* Project Description */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4">Project Description</h2>
+              <h2 className="text-lg font-semibold mb-4">
+                Project Description
+              </h2>
               <p className="text-gray-600">{project.description}</p>
             </div>
 
@@ -83,7 +82,9 @@ const ProjectDetail = () => {
               <div className="grid grid-cols-2 gap-4">
                 {Object.entries(project.metrics).map(([key, value]) => (
                   <div key={key} className="bg-gray-50 p-4 rounded-lg">
-                    <div className="text-gray-600 mb-1">{key.replace(/([A-Z])/g, ' $1').trim()}</div>
+                    <div className="text-gray-600 mb-1">
+                      {key.replace(/([A-Z])/g, " $1").trim()}
+                    </div>
                     <div className="text-xl font-semibold">{value}</div>
                   </div>
                 ))}
@@ -94,8 +95,15 @@ const ProjectDetail = () => {
             <div className="bg-white rounded-lg p-6 shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Project Image</h2>
               <div className="h-64 bg-gray-100 rounded-lg overflow-hidden">
-                {/* Replace with actual image */}
-                <div className="w-full h-full bg-gray-200"></div>
+                {project.image ? (
+                  <img
+                    src={project.image}
+                    alt={project.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-200"></div>
+                )}
               </div>
             </div>
           </div>
@@ -104,7 +112,9 @@ const ProjectDetail = () => {
           <div className="space-y-8">
             {/* Landowner Information */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4">Landowner Information</h2>
+              <h2 className="text-lg font-semibold mb-4">
+                Landowner Information
+              </h2>
               <div className="space-y-4">
                 <div className="flex items-center">
                   <User className="w-5 h-5 text-gray-400 mr-3" />
