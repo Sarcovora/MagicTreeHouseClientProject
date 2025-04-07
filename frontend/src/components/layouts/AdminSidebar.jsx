@@ -15,20 +15,16 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import TreeFolks from "../../assets/icons/treefolks.svg?react";
 
-const SideBar = () => {
+const AdminSidebar = () => {
   const location = useLocation();
 
   const menuItems = [
-    { icon: <TreePine size={24} />, label: "Properties", path: "/properties" },
-    { icon: <Files size={24} />, label: "Documents", path: "/documents" },
-    { icon: <FormInput size={24} />, label: "Forms", path: "/forms" },
-    {
-      icon: <Bell size={24} />,
-      label: "Notifications",
-      path: "/notifications",
-    },
-    { icon: <Map size={24} />, label: "Map", path: "/map" },
-    { icon: <Image size={24} />, label: "Photos", path: "/gallery" },
+    { icon: <TreePine size={24} />, label: "Properties", path: "/admin/properties" },
+    { icon: <Files size={24} />, label: "Documents", path: "/admin/documents" },
+    { icon: <FormInput size={24} />, label: "Forms", path: "/admin/forms" },
+    { icon: <Bell size={24} />, label: "Notifications", path: "/admin/notifications" },
+    { icon: <Map size={24} />, label: "Map", path: "/admin/map" },
+    { icon: <Image size={24} />, label: "Photos", path: "/admin/gallery" },
   ];
 
   // Check if a path is active
@@ -107,4 +103,4 @@ const SideBar = () => {
   );
 };
 
-export default SideBar;
+export default AdminSidebar;

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { MapPin, Image, Plus, Search, MessageCircle } from "lucide-react";
-import Sidebar from "../components/layouts/SideBar";
 import storageService from "../services/storageService";
 
 /**
@@ -103,9 +102,7 @@ const Map = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
-
+    <div className="min-h-screen bg-gray-50">
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">

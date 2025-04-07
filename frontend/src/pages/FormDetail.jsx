@@ -10,9 +10,8 @@ import {
   Edit,
   Check,
 } from "lucide-react";
-import Sidebar from "../components/layouts/SideBar";
 import UserAvatar from "../components/common/UserAvatar";
-
+import AdminSidebar from "../components/layouts/AdminSidebar";
 /**
  * Form detail page showing form preview and associated members
  */
@@ -28,24 +27,54 @@ const FormDetail = () => {
     const fetchForm = async () => {
       try {
         setLoading(true);
-        
+
         // This is mock data - replace with API call
         const mockForms = [
           {
             id: "1",
             title: "Environmental Assessment Form",
-            description: "Standard environmental assessment form for new project areas",
+            description:
+              "Standard environmental assessment form for new project areas",
             lastEdited: "2023-05-15",
             formFields: [
-              { id: "name", label: "Property Name", type: "text", required: true, value: "Oak Ridge" },
-              { id: "address", label: "Property Address", type: "text", required: true, value: "123 Forest Lane" },
-              { id: "acreage", label: "Total Acreage", type: "number", required: true, value: "45" },
-              { id: "treeSpecies", label: "Existing Tree Species", type: "textarea", value: "Oak, Pine, Maple" },
-              { id: "soilType", label: "Soil Type", type: "select", options: ["Clay", "Loam", "Sandy"], value: "Loam" }
+              {
+                id: "name",
+                label: "Property Name",
+                type: "text",
+                required: true,
+                value: "Oak Ridge",
+              },
+              {
+                id: "address",
+                label: "Property Address",
+                type: "text",
+                required: true,
+                value: "123 Forest Lane",
+              },
+              {
+                id: "acreage",
+                label: "Total Acreage",
+                type: "number",
+                required: true,
+                value: "45",
+              },
+              {
+                id: "treeSpecies",
+                label: "Existing Tree Species",
+                type: "textarea",
+                value: "Oak, Pine, Maple",
+              },
+              {
+                id: "soilType",
+                label: "Soil Type",
+                type: "select",
+                options: ["Clay", "Loam", "Sandy"],
+                value: "Loam",
+              },
             ],
             status: "Completed",
             createdDate: "2023-04-10",
-            lastModified: "2023-05-15"
+            lastModified: "2023-05-15",
           },
           {
             id: "2",
@@ -53,36 +82,97 @@ const FormDetail = () => {
             description: "Form for recording tree health and condition",
             lastEdited: "2023-05-10",
             formFields: [
-              { id: "location", label: "Inspection Location", type: "text", required: true, value: "North Section" },
-              { id: "date", label: "Inspection Date", type: "date", required: true, value: "2023-05-10" },
-              { id: "healthStatus", label: "Overall Health Status", type: "select", options: ["Excellent", "Good", "Fair", "Poor"], value: "Good" },
-              { id: "notes", label: "Inspector Notes", type: "textarea", value: "Trees showing good growth patterns with minimal pest activity." }
+              {
+                id: "location",
+                label: "Inspection Location",
+                type: "text",
+                required: true,
+                value: "North Section",
+              },
+              {
+                id: "date",
+                label: "Inspection Date",
+                type: "date",
+                required: true,
+                value: "2023-05-10",
+              },
+              {
+                id: "healthStatus",
+                label: "Overall Health Status",
+                type: "select",
+                options: ["Excellent", "Good", "Fair", "Poor"],
+                value: "Good",
+              },
+              {
+                id: "notes",
+                label: "Inspector Notes",
+                type: "textarea",
+                value:
+                  "Trees showing good growth patterns with minimal pest activity.",
+              },
             ],
             status: "In Progress",
             createdDate: "2023-05-01",
-            lastModified: "2023-05-10"
+            lastModified: "2023-05-10",
           },
           {
             id: "3",
             title: "Wildlife Observation Log",
-            description: "Form for documenting wildlife sightings in conservation areas",
+            description:
+              "Form for documenting wildlife sightings in conservation areas",
             lastEdited: "2023-05-05",
             formFields: [
-              { id: "observer", label: "Observer Name", type: "text", required: true, value: "John Naturalist" },
-              { id: "date", label: "Observation Date", type: "date", required: true, value: "2023-05-05" },
-              { id: "species", label: "Species Observed", type: "text", required: true, value: "Eastern Bluebird" },
-              { id: "count", label: "Count", type: "number", required: true, value: "12" },
-              { id: "behavior", label: "Observed Behavior", type: "textarea", value: "Nesting in oak trees, appears to be a family group with juveniles" },
-              { id: "habitat", label: "Habitat Type", type: "select", options: ["Forest", "Meadow", "Wetland", "Riparian"], value: "Forest" }
+              {
+                id: "observer",
+                label: "Observer Name",
+                type: "text",
+                required: true,
+                value: "John Naturalist",
+              },
+              {
+                id: "date",
+                label: "Observation Date",
+                type: "date",
+                required: true,
+                value: "2023-05-05",
+              },
+              {
+                id: "species",
+                label: "Species Observed",
+                type: "text",
+                required: true,
+                value: "Eastern Bluebird",
+              },
+              {
+                id: "count",
+                label: "Count",
+                type: "number",
+                required: true,
+                value: "12",
+              },
+              {
+                id: "behavior",
+                label: "Observed Behavior",
+                type: "textarea",
+                value:
+                  "Nesting in oak trees, appears to be a family group with juveniles",
+              },
+              {
+                id: "habitat",
+                label: "Habitat Type",
+                type: "select",
+                options: ["Forest", "Meadow", "Wetland", "Riparian"],
+                value: "Forest",
+              },
             ],
             status: "Submitted",
             createdDate: "2023-04-25",
-            lastModified: "2023-05-05"
-          }
+            lastModified: "2023-05-05",
+          },
         ];
-        
-        const foundForm = mockForms.find(f => f.id === id);
-        
+
+        const foundForm = mockForms.find((f) => f.id === id);
+
         if (foundForm) {
           setForm(foundForm);
         } else {
@@ -95,7 +185,7 @@ const FormDetail = () => {
         setLoading(false);
       }
     };
-    
+
     fetchForm();
   }, [id]);
 
@@ -116,7 +206,7 @@ const FormDetail = () => {
       email: "alvin.doe@example.com",
       phone: "+1 (555) 987-6543",
       avatar: null,
-    }
+    },
   ];
 
   // Format date for display
@@ -133,7 +223,7 @@ const FormDetail = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex">
-        <Sidebar />
+        <AdminSidebar />
         <div className="flex-1 p-8 flex justify-center items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
         </div>
@@ -144,7 +234,7 @@ const FormDetail = () => {
   if (error || !form) {
     return (
       <div className="min-h-screen bg-gray-50 flex">
-        <Sidebar />
+        <AdminSidebar />
         <div className="flex-1 p-8">
           <button
             onClick={() => navigate("/forms")}
@@ -163,8 +253,7 @@ const FormDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
+    <div className="min-h-screen bg-gray-50">
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           <button
@@ -184,41 +273,49 @@ const FormDetail = () => {
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-bold">Form Details</h2>
                   <div className="flex space-x-2">
-                    <span className={`px-3 py-1 text-xs rounded-full ${
-                      form.status === "Completed" ? "bg-green-100 text-green-800" : 
-                      form.status === "In Progress" ? "bg-yellow-100 text-yellow-800" : 
-                      "bg-blue-100 text-blue-800"
-                    }`}>
+                    <span
+                      className={`px-3 py-1 text-xs rounded-full ${
+                        form.status === "Completed"
+                          ? "bg-green-100 text-green-800"
+                          : form.status === "In Progress"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
                       {form.status}
                     </span>
                   </div>
                 </div>
-                
+
                 <p className="mb-6 text-gray-600">{form.description}</p>
 
                 <div className="space-y-6">
-                  {form.formFields.map(field => (
+                  {form.formFields.map((field) => (
                     <div key={field.id} className="form-field">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         {field.label}
-                        {field.required && <span className="text-red-500 ml-1">*</span>}
+                        {field.required && (
+                          <span className="text-red-500 ml-1">*</span>
+                        )}
                       </label>
-                      
-                      {field.type === 'textarea' ? (
+
+                      {field.type === "textarea" ? (
                         <textarea
                           className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50"
                           readOnly
                           value={field.value || ""}
                           rows={4}
                         />
-                      ) : field.type === 'select' ? (
-                        <select 
+                      ) : field.type === "select" ? (
+                        <select
                           className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50"
                           value={field.value || ""}
                           disabled
                         >
-                          {field.options.map(option => (
-                            <option key={option} value={option}>{option}</option>
+                          {field.options.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
                           ))}
                         </select>
                       ) : (

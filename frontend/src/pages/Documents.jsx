@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { FileText, Plus, Search, Filter } from "lucide-react";
-import Sidebar from "../components/layouts/SideBar";
 import DocumentCard from "../components/documents/DocumentCard";
 import storageService from "../services/storageService";
 import { DOCUMENT_CATEGORIES } from "../config/constants";
-import { documentService } from '../services/documentService';
+import { documentService } from "../services/documentService";
 
 /**
  * Documents page component for displaying and managing documents
  */
 const Documents = () => {
-  const [documents, setDocuments] = useState([]);  // Initialize as empty array
+  const [documents, setDocuments] = useState([]); // Initialize as empty array
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,10 +28,10 @@ const Documents = () => {
       try {
         setLoading(true);
         const docs = await storageService.getDocuments(selectedCategory);
-        console.log('Fetched documents:', docs); // Debug log
+        console.log("Fetched documents:", docs); // Debug log
         setDocuments(docs || []); // Ensure we always set an array
       } catch (err) {
-        console.error('Error fetching documents:', err);
+        console.error("Error fetching documents:", err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -46,11 +45,12 @@ const Documents = () => {
     try {
       setIsUploading(true);
       setUploadError(null);
-      
+
       // File validation
-      if (!file) throw new Error('No file selected');
-      if (file.size > 10 * 1024 * 1024) throw new Error('File size exceeds 10MB limit');
-      
+      if (!file) throw new Error("No file selected");
+      if (file.size > 10 * 1024 * 1024)
+        throw new Error("File size exceeds 10MB limit");
+
       // Upload with progress tracking
       await documentService.uploadDocument(file, category, (progress) => {
         setUploadProgress(progress);
@@ -59,12 +59,12 @@ const Documents = () => {
       // Refresh document list after successful upload
       const newDocs = await documentService.getDocuments(selectedCategory);
       setDocuments(newDocs);
-      
+
       // Reset states
       setUploadProgress(0);
       setIsUploading(false);
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error("Upload error:", error);
       setUploadError(error.message);
       setIsUploading(false);
     }
@@ -84,10 +84,8 @@ const Documents = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
-
-      <div className="flex-1 p-8">
+    <div className="min-h-screen bg-gray-50">
+      <div className="p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
             <h1 className="text-2xl font-bold mb-4 md:mb-0">Documents</h1>
@@ -166,8 +164,8 @@ const Documents = () => {
       {isUploading && (
         <div className="fixed top-4 right-4 bg-white p-4 rounded-lg shadow-lg">
           <div className="w-full bg-gray-200 rounded-full">
-            <div 
-              className="bg-green-500 rounded-full h-2" 
+            <div
+              className="bg-green-500 rounded-full h-2"
               style={{ width: `${uploadProgress}%` }}
             />
           </div>

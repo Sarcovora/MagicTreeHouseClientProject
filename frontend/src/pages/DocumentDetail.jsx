@@ -8,7 +8,7 @@ import {
   Download,
   FileText,
 } from "lucide-react";
-import Sidebar from "../components/layouts/SideBar";
+import Sidebar from "../components/layouts/AdminSidebar";
 import storageService from "../services/storageService";
 import UserAvatar from "../components/common/UserAvatar";
 
@@ -136,8 +136,7 @@ const DocumentDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
+    <div className="min-h-screen bg-gray-50">
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           <button
