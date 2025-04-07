@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Mail, Phone, Download, Eye } from "lucide-react";
 import { Document, Page } from "react-pdf";
 import UserAvatar from "../../components/common/UserAvatar";
-import "../../pdfWorker";
+import "../../pdfWorker"; // Import the PDF worker configuration
 
 const FormDetail = () => {
   const { id } = useParams();
@@ -74,6 +74,30 @@ const FormDetail = () => {
     setLoading(false);
   }, [id]);
 
+  const renderNavigation = () => {
+    return (
+      <div className="flex justify-between items-center mt-4">
+        <button
+          disabled={pageNumber <= 1}
+          onClick={() => setPageNumber(pageNumber - 1)}
+          className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <p className="text-sm text-gray-600">
+          Page {pageNumber} of {numPages}
+        </p>
+        <button
+          disabled={pageNumber >= numPages}
+          onClick={() => setPageNumber(pageNumber + 1)}
+          className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -134,14 +158,28 @@ const FormDetail = () => {
               </button>
             </div>
           </div>
-          <div className="flex justify-center border rounded-lg overflow-auto max-h-[600px]">
-            <Document
-              file="/pdfs/carbonCreditForm.pdf"
-              onLoadSuccess={onDocumentLoadSuccess}
-              className="max-w-full"
-            >
-              <Page pageNumber={pageNumber} />
-            </Document>
+          <div className="flex flex-col items-center border rounded-lg overflow-hidden">
+            <div className="w-full overflow-auto max-h-[600px]">
+              <Document
+                file={form.pdfUrl}
+                onLoadSuccess={onDocumentLoadSuccess}
+                className="max-w-full"
+                error="Failed to load PDF document. Please check if the file exists."
+                loading={
+                  <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500"></div>
+                  </div>
+                }
+              >
+                <Page 
+                  pageNumber={pageNumber} 
+                  renderTextLayer={false}
+                  renderAnnotationLayer={false}
+                  scale={1.0}
+                />
+              </Document>
+            </div>
+            {numPages && renderNavigation()}
           </div>
         </div>
 
