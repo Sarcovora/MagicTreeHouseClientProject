@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { MapPin, Calendar } from 'lucide-react';
 
 const ProjectCard = ({ project }) => {
-
   return (
     <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
       {/* Image at the top */}
