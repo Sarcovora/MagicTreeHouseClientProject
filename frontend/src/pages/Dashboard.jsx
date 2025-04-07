@@ -10,7 +10,7 @@ import AddNewFolder from "../assets/icons/addNewFolder.svg?react";
  * Dashboard component displays reforestation projects organized by season
  */
 const Dashboard = () => {
-  const [viewMode, setViewMode] = useState("projects"); // 'projects' or 'seasons'
+  const [viewMode, setViewMode] = useState("seasons"); // 'projects' or 'seasons'
   const [searchTerm, setSearchTerm] = useState("");
 
   // Group projects by season
@@ -53,22 +53,44 @@ const Dashboard = () => {
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
         <div className="mb-8">
-<div className="flex justify-between items-center">
-  <div>
-    <h1 className="text-2xl font-semibold">
-      {viewMode === "projects"
-        ? "Your Reforestation Projects"
-        : "Your Reforestation Seasons"}
-    </h1>
-    {/* Add the folder button here, below the title */}
-    <AddNewFolder 
-      className="h-10 w-auto mt-4 cursor-pointer" 
-      onClick={() => {
-        /* Add your folder creation logic here */
-      }}
-    />
-  </div>
-</div>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-semibold">
+                {viewMode === "projects"
+                  ? "Your Reforestation Projects"
+                  : "Your Reforestation Seasons"}
+              </h1>
+              {/* Add the folder button here, below the title */}
+              <AddNewFolder
+                className="h-10 w-auto mt-4 cursor-pointer"
+                onClick={() => {
+                  /* Add your folder creation logic here */
+                }}
+              />
+            </div>
+            <div className="flex space-x-4">
+              <button
+                className={`px-4 py-2 rounded-lg ${
+                  viewMode === "projects"
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+                onClick={() => setViewMode("projects")}
+              >
+                Projects
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg ${
+                  viewMode === "seasons"
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+                onClick={() => setViewMode("seasons")}
+              >
+                Seasons
+              </button>
+            </div>
+          </div>
           <div className="mt-4">
             <input
               type="text"
