@@ -15,12 +15,12 @@ const Dashboard = () => {
 
   // Group projects by season
   const projectsBySeasons = {
-    "2024": [],
-    "2023": [],
-    "2022": [],
-    "2021": [],
-    "2020": [],
-    "2019": [],
+    2024: [],
+    2023: [],
+    2022: [],
+    2021: [],
+    2020: [],
+    2019: [],
   };
 
   // Assign projects to seasons (in a real app, this would come from the database)
@@ -116,13 +116,16 @@ const Dashboard = () => {
                 key={season}
                 className="cursor-pointer transform transition-transform hover:scale-105"
               >
-                <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md">
-                  <div className="bg-gray-100 rounded-lg h-32 flex items-center justify-center mb-3">
-                    <Folder className="w-32 h-32 text-gray-400" />
+                <div className="bg-gray-100 rounded-2xl shadow-md hover:shadow-lg transition-shadow p-6">
+                  <div className="flex items-center justify-center h-32 mb-4">
+                    <Folder className="w-40 h-40 text-gray-400" />
                   </div>
-                  <h3 className="text-center font-medium">{season}</h3>
+                  <h3 className="text-center text-lg font-semibold text-gray-800">
+                    {season}
+                  </h3>
                   <p className="text-center text-sm text-gray-500">
-                    {projects.length} projects
+                    {projects.length}{" "}
+                    {projects.length === 1 ? "project" : "projects"}
                   </p>
                 </div>
               </div>
