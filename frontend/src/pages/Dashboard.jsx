@@ -5,6 +5,7 @@ import ProjectCard from "../components/projects/ProjectCard";
 import projectsData from "../data/projectsData";
 import Folder from "../assets/icons/folder.svg?react";
 import AddNewFolder from "../assets/icons/addNewFolder.svg?react";
+import AddNewProject from "../assets/icons/addNewProject.svg?react";
 
 /**
  * Dashboard component displays reforestation projects organized by season
@@ -61,12 +62,13 @@ const Dashboard = () => {
                   : "Your Reforestation Seasons"}
               </h1>
               {/* Add the folder button here, below the title */}
-              <AddNewFolder
-                className="h-10 w-auto mt-4 cursor-pointer"
-                onClick={() => {
-                  /* Add your folder creation logic here */
-                }}
-              />
+              <div className="mt-4">
+                {viewMode === "seasons" ? (
+                  <AddNewFolder className="h-10 w-auto mt-4 cursor-pointer" />
+                ) : (
+                  <AddNewFolder className="h-10 w-auto mt-4 cursor-pointer" />
+                )}
+              </div>
             </div>
             <div className="flex space-x-4">
               <button
