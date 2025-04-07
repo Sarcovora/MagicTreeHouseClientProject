@@ -13,6 +13,7 @@ import {
   Image,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import TreeFolks from "../../assets/icons/treefolks.svg?react";
 
 const SideBar = () => {
   const location = useLocation();
@@ -43,8 +44,8 @@ const SideBar = () => {
       {/* Logo Section */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">
-          <TreePine className="w-8 h-8 text-green-600" />
-          <span className="text-xl font-semibold">TreeFolks</span>
+          <TreeFolks className="w-32 h-32 text-green-600" />
+          {/* <span className="text-xl font-semibold">TreeFolks</span> */}
         </div>
       </div>
 
