@@ -29,12 +29,12 @@ const ProjectDetail = () => {
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center text-gray-600 hover:text-gray-900"
+            className="flex items-center text-gray-500 hover:text-gray-800"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Projects
+            Back
           </button>
-          <div className="flex space-x-4">
+          <div className="flex space-x-2">
             <button className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
               <Edit className="w-5 h-5 mr-2" />
               Edit Project
@@ -47,27 +47,34 @@ const ProjectDetail = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-8 py-8">
+      <div className="max-w-7xl mx-auto px-8 py-6">
+        {/* Project Image - Moved to the top */}
+        {project.image && (
+          <div className="mb-8 rounded-lg overflow-hidden shadow-sm">
+            <img
+              src={project.image}
+              alt={project.name}
+              className="w-full h-auto object-cover"
+            />
+          </div>
+        )}
+
+        {/* Project Header */}
+        <div className="flex flex-col md:flex-row md:items-start justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">{project.name}</h1>
+            <div className="flex items-center text-gray-600 mb-4">
+              <MapPin className="w-5 h-5 mr-2" />
+              <span>{project.location || "No location specified"}</span>
+            </div>
+          </div>
+          
+          {/* Rest of your project content */}
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Left Column */}
           <div className="md:col-span-2 space-y-8">
-            {/* Project Header */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-start space-x-4">
-                <TreePine className="w-12 h-12 text-green-600" />
-                <div>
-                  <h1 className="text-2xl font-semibold mb-2">
-                    {project.name}
-                  </h1>
-                  <div className="flex items-center text-gray-600">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {project.location}
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Project Description */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
               <h2 className="text-lg font-semibold mb-4">
@@ -88,22 +95,6 @@ const ProjectDetail = () => {
                     <div className="text-xl font-semibold">{value}</div>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Project Image */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4">Project Image</h2>
-              <div className="h-64 bg-gray-100 rounded-lg overflow-hidden">
-                {project.image ? (
-                  <img
-                    src={project.image}
-                    alt={project.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-200"></div>
-                )}
               </div>
             </div>
           </div>

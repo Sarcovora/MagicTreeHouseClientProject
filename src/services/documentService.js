@@ -19,7 +19,7 @@ import { storage, db } from "../config/firebase";
 /**
  * Service for handling document operations with Firebase
  */
-const documentService = {
+export const documentService = {
   /**
    * Upload a document to Firebase Storage and save metadata to Firestore
    * @param {File} file - The file to upload
@@ -137,4 +137,5 @@ const documentService = {
   },
 };
 
+// Alternative default export if needed
 export default documentService;

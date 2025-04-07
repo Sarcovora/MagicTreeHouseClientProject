@@ -5,15 +5,20 @@ import Sidebar from "../components/layouts/SideBar";
 import DocumentCard from "../components/documents/DocumentCard";
 import storageService from "../services/storageService";
 import { DOCUMENT_CATEGORIES } from "../config/constants";
+import { documentService } from '../services/documentService';
 
 /**
  * Documents page component for displaying and managing documents
  */
 const Documents = () => {
-  const [documents, setDocuments] = useState([]);
+  const [documents, setDocuments] = useState([]);  // Initialize as empty array
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Documents");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
   // Categories for document filtering - moved to a constant that could be imported
   const categories = ["All Documents", ...DOCUMENT_CATEGORIES];
@@ -23,10 +28,12 @@ const Documents = () => {
     const fetchDocuments = async () => {
       try {
         setLoading(true);
-        const docs = storageService.getDocuments(selectedCategory);
-        setDocuments(docs);
-      } catch (error) {
-        console.error("Error fetching documents:", error);
+        const docs = await storageService.getDocuments(selectedCategory);
+        console.log('Fetched documents:', docs); // Debug log
+        setDocuments(docs || []); // Ensure we always set an array
+      } catch (err) {
+        console.error('Error fetching documents:', err);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
@@ -35,20 +42,39 @@ const Documents = () => {
     fetchDocuments();
   }, [selectedCategory]);
 
-  // Handle document deletion
-  const handleDeleteDocument = async (documentId) => {
+  const handleFileUpload = async (file, category) => {
     try {
-      await storageService.deleteDocument(documentId);
-      // Update the documents list after deletion
-      setDocuments((prevDocs) =>
-        prevDocs.filter((doc) => doc.id !== documentId)
-      );
+      setIsUploading(true);
+      setUploadError(null);
+      
+      // File validation
+      if (!file) throw new Error('No file selected');
+      if (file.size > 10 * 1024 * 1024) throw new Error('File size exceeds 10MB limit');
+      
+      // Upload with progress tracking
+      await documentService.uploadDocument(file, category, (progress) => {
+        setUploadProgress(progress);
+      });
+
+      // Refresh document list after successful upload
+      const newDocs = await documentService.getDocuments(selectedCategory);
+      setDocuments(newDocs);
+      
+      // Reset states
+      setUploadProgress(0);
+      setIsUploading(false);
     } catch (error) {
-      console.error("Error deleting document:", error);
+      console.error('Upload error:', error);
+      setUploadError(error.message);
+      setIsUploading(false);
     }
   };
 
-  // Filter documents based on search term
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!documents) return <div>No documents found</div>;
+
+  // Now documents is guaranteed to be an array
   const filteredDocuments = documents.filter(
     (doc) =>
       doc.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -135,6 +161,26 @@ const Documents = () => {
           )}
         </div>
       </div>
+
+      {/* Add upload progress indicator */}
+      {isUploading && (
+        <div className="fixed top-4 right-4 bg-white p-4 rounded-lg shadow-lg">
+          <div className="w-full bg-gray-200 rounded-full">
+            <div 
+              className="bg-green-500 rounded-full h-2" 
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+          <p className="text-sm mt-2">Uploading: {uploadProgress}%</p>
+        </div>
+      )}
+
+      {/* Show upload error if any */}
+      {uploadError && (
+        <div className="fixed top-4 right-4 bg-red-100 text-red-700 p-4 rounded-lg">
+          {uploadError}
+        </div>
+      )}
     </div>
   );
 };

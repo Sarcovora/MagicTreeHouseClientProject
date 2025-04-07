@@ -44,7 +44,7 @@ const SideBar = () => {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">
           <TreePine className="w-8 h-8 text-green-600" />
-          <span className="text-xl font-semibold">EcoTracker</span>
+          <span className="text-xl font-semibold">TreeFolks</span>
         </div>
       </div>
 
