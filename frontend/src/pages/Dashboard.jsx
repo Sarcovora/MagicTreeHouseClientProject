@@ -68,28 +68,6 @@ const Dashboard = () => {
       }}
     />
   </div>
-  <div className="flex space-x-4">
-    <button
-      className={`px-4 py-2 rounded-lg ${
-        viewMode === "projects"
-          ? "bg-green-600 text-white"
-          : "bg-gray-100 text-gray-600"
-      }`}
-      onClick={() => setViewMode("projects")}
-    >
-      Projects
-    </button>
-    <button
-      className={`px-4 py-2 rounded-lg ${
-        viewMode === "seasons"
-          ? "bg-green-600 text-white"
-          : "bg-gray-100 text-gray-600"
-      }`}
-      onClick={() => setViewMode("seasons")}
-    >
-      Seasons
-    </button>
-  </div>
 </div>
           <div className="mt-4">
             <input
