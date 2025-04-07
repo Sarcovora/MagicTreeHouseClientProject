@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Mail, Phone, Download, Eye } from "lucide-react";
+import { Document, Page } from "react-pdf";
 import UserAvatar from "../../components/common/UserAvatar";
+import "../../pdfWorker";
 
 const FormDetail = () => {
   const { id } = useParams();
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+
+  function onDocumentLoadSuccess({ numPages }) {
+    setNumPages(numPages);
+  }
 
   useEffect(() => {
     // Mock data - replace with API call
@@ -76,7 +84,7 @@ const FormDetail = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
         {/* Header */}
         <div className="mb-8">
           <Link
@@ -113,6 +121,30 @@ const FormDetail = () => {
           </div>
         </div>
 
+        {/* PDF Viewer Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">Document Preview</h2>
+            <div className="space-x-4">
+              <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                Make Changes
+              </button>
+              <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                Another Action
+              </button>
+            </div>
+          </div>
+          <div className="flex justify-center border rounded-lg overflow-auto max-h-[600px]">
+            <Document
+              file="/pdfs/carbonCreditForm.pdf"
+              onLoadSuccess={onDocumentLoadSuccess}
+              className="max-w-full"
+            >
+              <Page pageNumber={pageNumber} />
+            </Document>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
@@ -135,6 +167,22 @@ const FormDetail = () => {
                 ))}
               </div>
             </div>
+
+            {/* Document Details Section */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-semibold mb-4">Document Details</h2>
+              <div className="space-y-4">
+                <p className="text-gray-600">
+                  A short synopsis of the location and reforestation efforts.
+                </p>
+                <p className="text-gray-600">
+                  Include net coverage and other carbon credit growth or stats that may be associated with the specific location.
+                </p>
+                <p className="text-gray-600">
+                  This body of text can also serve as latest updates (can be imported from the notification section)
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Sidebar */}
@@ -143,29 +191,39 @@ const FormDetail = () => {
               <h2 className="text-xl font-semibold mb-4">Associated Members</h2>
               <div className="space-y-6">
                 {form.associatedMembers.map((member) => (
-                  <div key={member.id} className="flex items-start space-x-4">
-                    <UserAvatar name={member.name} size={40} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
-                        {member.name}
-                      </p>
-                      <p className="text-xs text-gray-500">{member.role}</p>
-                      <div className="mt-2 space-y-1">
-                        <a
-                          href={`mailto:${member.email}`}
-                          className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-                        >
-                          <Mail className="w-4 h-4 mr-2" />
-                          {member.email}
-                        </a>
-                        <a
-                          href={`tel:${member.phone}`}
-                          className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-                        >
-                          <Phone className="w-4 h-4 mr-2" />
-                          {member.phone}
-                        </a>
+                  <div key={member.id} className="flex flex-col space-y-4 p-4 border rounded-lg">
+                    <div className="flex items-start space-x-4">
+                      <UserAvatar name={member.name} size={40} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">
+                          {member.name}
+                        </p>
+                        <p className="text-xs text-gray-500">{member.role}</p>
+                        <div className="mt-2 space-y-1">
+                          <a
+                            href={`mailto:${member.email}`}
+                            className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+                          >
+                            <Mail className="w-4 h-4 mr-2" />
+                            {member.email}
+                          </a>
+                          <a
+                            href={`tel:${member.phone}`}
+                            className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+                          >
+                            <Phone className="w-4 h-4 mr-2" />
+                            {member.phone}
+                          </a>
+                        </div>
                       </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button className="flex-1 px-3 py-2 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200">
+                        Assign User
+                      </button>
+                      <button className="flex-1 px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
+                        Ping User
+                      </button>
                     </div>
                   </div>
                 ))}

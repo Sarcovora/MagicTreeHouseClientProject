@@ -9,7 +9,7 @@ import DocumentDetail from "./pages/DocumentDetail";
 import Map from "./pages/Map";
 import PhotoGallery from "./pages/PhotoGallery";
 import Forms from "./pages/Forms";
-import FormDetail from "./pages/FormDetail";
+import FormDetail from "./pages/admin/FormDetail";
 import LandownerLayout from "./pages/landowner/LandownerLayout";
 import LandownerDashboard from "./pages/landowner/LandownerDashboard";
 
