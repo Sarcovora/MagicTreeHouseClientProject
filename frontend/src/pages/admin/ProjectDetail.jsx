@@ -9,7 +9,7 @@ import {
   Edit,
   Trash2,
 } from "lucide-react";
-import projectsData from "../data/projectsData";
+import projectsData from "../../data/projectsData";
 
 /**
  * ProjectDetail component displays detailed information about a specific project

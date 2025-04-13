@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Upload, ArrowLeft, File, X } from "lucide-react";
-import Sidebar from "../components/layouts/SideBar";
 import storageService from "../services/storageService";
 
 /**
@@ -90,8 +89,7 @@ const DocumentUpload = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
+    <div className="min-h-screen bg-gray-50">
       <div className="flex-1">
         <div className="max-w-4xl mx-auto p-6">
           {/* Back button */}

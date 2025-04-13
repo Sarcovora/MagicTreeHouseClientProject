@@ -15,7 +15,7 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import TreeFolks from "../../assets/icons/treefolks.svg?react";
 
-const SideBar = () => {
+const LandownerSidebar = () => {
   const location = useLocation();
 
   const menuItems = [
@@ -43,7 +43,7 @@ const SideBar = () => {
     <div className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col">
       {/* Logo Section */}
       <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center justify-center">
           <TreeFolks className="w-32 h-32 text-green-600" />
           {/* <span className="text-xl font-semibold">TreeFolks</span> */}
         </div>
@@ -107,4 +107,4 @@ const SideBar = () => {
   );
 };
 
-export default SideBar;
+export default LandownerSidebar;
