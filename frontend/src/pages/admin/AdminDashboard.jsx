@@ -64,9 +64,9 @@ const AdminDashboard = () => {
   // Filter seasons
    const filteredSeasons = viewMode === 'seasons'
     ? seasons.filter(
-        (season) =>
-          season.year.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      (season) =>
+        season.year.toLowerCase().includes(searchTerm.toLowerCase())
+    )
     : [];
 
    // --- Handlers ---
@@ -168,7 +168,7 @@ const AdminDashboard = () => {
     <>
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center">
-           {/* Title and Add Button */}
+          {/* Title and Add Button */}
           <div className="mb-4 sm:mb-0">
             <h1 className="text-2xl font-semibold mb-2">
               {viewMode === "projects"
@@ -229,7 +229,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-       {/* Content Area */}
+      {/* Content Area */}
       {renderContent()}
 
        {/* Add Season Modal */}
