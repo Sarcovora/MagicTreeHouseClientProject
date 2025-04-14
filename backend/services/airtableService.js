@@ -38,22 +38,26 @@ const FIELD_MAP = {
         ownerLastName: 'Owner Last Name or Site Name', // Used for display name
         address: 'Property Address',
         date: 'Planting Date', // Or Application Date? Choose the most relevant date
-        //description: 'Description of property and condition of riparian/floodplain area (by applicant)',
+        phone: 'Primary Phone Number',
+        email: 'Email',
         season: 'Season', // Field name for filtering/creating
         city: 'City',
         zipCode: 'Zip Code',
+        county: 'County',
         propertyId: 'Property ID Number(s)',
         status: 'Current Status',
         landRegion: 'Land Region',
         contactDate: 'Contact Date',
         consultationDate: 'Consultation Date',
         flaggingDate: 'Flagging Date',
+        applicationDate: 'Application Date',
         siteNumber: 'Site Number', // **Added Site Number for UniqueID**
         // Add other fields you want to create/update
         initialMap: 'Initial Map', // Attachment field example
         draftMap: 'Draft Map',
         finalMap: 'Final Map',
         plantingPhotos: 'Planting Photos',
+        participationStatus: 'Participation status',
     },
     // Input: Airtable Field Name or ID -> Output: API Key
     airtableToApi: {
@@ -86,6 +90,7 @@ const FIELD_MAP = {
         'Consultation Date': 'consultationDate',
         'Flagging Date': 'flaggingDate',
         'Site Number': 'siteNumber', // **Added Site Number for UniqueID**
+        'Participation status': 'participationStatus',
     }
 };
 
@@ -225,8 +230,6 @@ const getProjectDetails = async (recordId) => {
     }
 };
 
-
-// --- REPLACE addSeasonOption with the dummy record workaround ---
 /**
  * Attempts to add a new season option by creating and deleting a dummy record.
  * Requires 'data.records:write' scope for the PAT.
