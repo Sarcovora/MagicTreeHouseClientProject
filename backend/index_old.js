@@ -12,11 +12,16 @@ app.use(express.json());
 // Retrieve Supabase credentials from environment variables.
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const AIRTABLE_PAT = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('Supabase credentials are missing in environment variables.');
   process.exit(1);
 }
+
+const supabaseUrl = 'https://fwfmjzefnioedidaehjn.supabase.co/'
+const supabaseKey = process.env.SUPABASE_KEY
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Create a Supabase client.
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
