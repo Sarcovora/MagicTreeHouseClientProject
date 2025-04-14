@@ -8,18 +8,18 @@ const {
     AIRTABLE_PAT,
     AIRTABLE_BASE_ID,
     AIRTABLE_TABLE_ID,
-    AIRTABLE_SEASON_FIELD_ID,
+    AIRTABLE_SEASON_FIELD_ID, // Still useful for getAllSeasons
     AIRTABLE_API_URL
 } = process.env;
 
 // Configure Airtable client FOR DATA API
 Airtable.configure({
-    endpointUrl: AIRTABLE_API_URL, // Usually https://api.airtable.com
-    apiKey: AIRTABLE_PAT // Use PAT as the API key
+    endpointUrl: AIRTABLE_API_URL,
+    apiKey: AIRTABLE_PAT
 });
 
 const base = Airtable.base(AIRTABLE_BASE_ID);
-const table = base(AIRTABLE_TABLE_ID); // Reference the specific table by ID
+const table = base(AIRTABLE_TABLE_ID);
 
 // --- Helper for Metadata API Calls ---
 const metadataApi = axios.create({
@@ -29,8 +29,7 @@ const metadataApi = axios.create({
     }
 });
 
-// --- Field Mappings (Airtable Field Name/ID -> Desired API JSON Key) ---
-// Adjust these based on EXACT field names/IDs in your base and desired output
+// --- Field Mappings (Keep as is, used by other functions) ---
 const FIELD_MAP = {
     // Input: API Key -> Output: Airtable Field Name or ID
     apiToAirtable: {
@@ -39,7 +38,7 @@ const FIELD_MAP = {
         ownerLastName: 'Owner Last Name or Site Name', // Used for display name
         address: 'Property Address',
         date: 'Planting Date', // Or Application Date? Choose the most relevant date
-        description: 'Description of property and condition of riparian/floodplain area (by applicant)',
+        //description: 'Description of property and condition of riparian/floodplain area (by applicant)',
         season: 'Season', // Field name for filtering/creating
         city: 'City',
         zipCode: 'Zip Code',
@@ -49,6 +48,7 @@ const FIELD_MAP = {
         contactDate: 'Contact Date',
         consultationDate: 'Consultation Date',
         flaggingDate: 'Flagging Date',
+        siteNumber: 'Site Number', // **Added Site Number for UniqueID**
         // Add other fields you want to create/update
         initialMap: 'Initial Map', // Attachment field example
         draftMap: 'Draft Map',
@@ -63,7 +63,7 @@ const FIELD_MAP = {
         'Property Address': 'address',
         'Planting Date': 'plantingDate',
         'Application Date': 'applicationDate',
-        'Description of property and condition of riparian/floodplain area (by applicant)': 'description',
+        //'Description of property and condition of riparian/floodplain area (by applicant)': 'description',
         'Current Status': 'status',
         'Season': 'season',
         'City': 'city',
@@ -85,10 +85,11 @@ const FIELD_MAP = {
         'Contact Date': 'contactDate',
         'Consultation Date': 'consultationDate',
         'Flagging Date': 'flaggingDate',
+        'Site Number': 'siteNumber', // **Added Site Number for UniqueID**
     }
 };
 
-// --- Helper Function to Process Records ---
+// --- Helper Function to Process Records (Keep as is) ---
 const processRecord = (record) => {
     const processed = { id: record.id }; // Always include the Airtable record ID
     for (const airtableField in FIELD_MAP.airtableToApi) {
@@ -124,34 +125,7 @@ const processRecord = (record) => {
 
 // --- Service Functions ---
 
-/**
- * Fetches the available choices from the 'Season' single-select field.
- */
-//const getAllSeasons = async () => {
-//    try {
-//        console.log(`Fetching metadata for table ${AIRTABLE_TABLE_ID}`);
-//        const response = await metadataApi.get(`/tables`); // Gets all tables, easier than finding field directly sometimes
-//        const tablesData = response.data.tables;
-//
-//        const targetTable = tablesData.find(t => t.id === AIRTABLE_TABLE_ID || t.name === "Application, status, and GIS data"); // Find by ID or Name
-//        if (!targetTable) {
-//            throw new Error(`Table with ID ${AIRTABLE_TABLE_ID} not found in metadata.`);
-//        }
-//
-//        const seasonField = targetTable.fields.find(f => f.id === AIRTABLE_SEASON_FIELD_ID || f.name === 'Season'); // Find field by ID or Name
-//        if (!seasonField || seasonField.type !== 'singleSelect') {
-//            throw new Error(`'Season' field (ID: ${AIRTABLE_SEASON_FIELD_ID}) not found or is not a singleSelect.`);
-//        }
-//
-//        const choices = seasonField.options?.choices?.map(choice => choice.name) || [];
-//        console.log(`Found Seasons: ${choices.join(', ')}`);
-//        return choices;
-//    } catch (error) {
-//        console.error('Error fetching seasons from metadata:', error.response?.data || error.message);
-//        throw new Error(`Failed to fetch seasons: ${error.message}`); // Re-throw for controller
-//    }
-//};
-
+// --- Keep getAllSeasons (uses Metadata API) ---
 const getAllSeasons = async () => {
     try {
         console.log(`Fetching metadata via /tables for table ${AIRTABLE_TABLE_ID} to get seasons`);
@@ -160,12 +134,23 @@ const getAllSeasons = async () => {
 
         const targetTable = tablesData.find(t => t.id === AIRTABLE_TABLE_ID);
         if (!targetTable) {
-            throw new Error(`Table with ID ${AIRTABLE_TABLE_ID} not found in metadata.`);
+            // Try finding by name if ID fails (less reliable)
+            const tableByName = tablesData.find(t => t.name === "Application, status, and GIS data");
+            if (!tableByName) {
+                throw new Error(`Table with ID ${AIRTABLE_TABLE_ID} or name 'Application, status, and GIS data' not found in metadata.`);
+            }
+            console.warn(`Warning: Found table by name, configured ID ${AIRTABLE_TABLE_ID} might be incorrect.`);
+            // If you want to proceed using the name match, uncomment below
+            // targetTable = tableByName;
+            // else { // If still not found
+            //throw new Error(`Table with ID ${AIRTABLE_TABLE_ID} or name 'Application, status, and GIS data' not found in metadata.`);
+            //}
         }
+
 
         const seasonField = targetTable.fields.find(f => f.id === AIRTABLE_SEASON_FIELD_ID || f.name === 'Season'); // Find field by ID or Name
         if (!seasonField) {
-            throw new Error(`'Season' field (ID: ${AIRTABLE_SEASON_FIELD_ID} or name 'Season') not found in table ${AIRTABLE_TABLE_ID}.`);
+            throw new Error(`'Season' field (ID: ${AIRTABLE_SEASON_FIELD_ID} or name 'Season') not found in table ${targetTable.id}.`);
         }
         if (seasonField.type !== 'singleSelect') {
             throw new Error(`'Season' field (ID: ${seasonField.id}) is not a singleSelect.`);
@@ -180,36 +165,15 @@ const getAllSeasons = async () => {
     }
 };
 
-/**
- * Fetches projects (records) filtered by a specific season.
- */
+
+// --- Keep getProjectsBySeason (uses Data API) ---
 const getProjectsBySeason = async (season) => {
     return new Promise((resolve, reject) => {
         const projects = [];
-        // Only select fields that are needed for the list view
-        const fieldsToSelect = Object.keys(FIELD_MAP.airtableToApi).filter(fName => [
-            'UniqueID',
-            'Owner First Name or Organization',
-            'Owner Last Name or Site Name',
-            'Primary Phone Number',
-            'Email',
-            'Property Address',
-            'City',
-            'Zip Code',
-            'Property ID Number(s)',
-            'Land Region',
-            'County',
-            'Application Date',
-            'Contact Date',
-            'Planting Date', // Or another relevant date
-            'Consultation Date',
-            'Flagging Date',
-            'Season', // Needed for verification, though filtered
-            'Initial Map', // Get first map for preview
-            'Planting Photos', // Get first photo for preview
-        ].includes(fName));
+        // Select fields needed for list view - update based on your FIELD_MAP.airtableToApi
+        const fieldsToSelect = Object.keys(FIELD_MAP.airtableToApi); // Select all mapped fields for simplicity or curate as before
 
-        console.log(`Fetching projects for season: ${season} with fields: ${fieldsToSelect.join(', ')}`);
+        console.log(`Fetching projects for season: ${season}`); // Removed long fields list log
 
         table.select({
             // maxRecords: 100, // Consider pagination for large bases
@@ -219,7 +183,10 @@ const getProjectsBySeason = async (season) => {
         }).eachPage(
             (records, fetchNextPage) => {
                 records.forEach((record) => {
-                    projects.push(processRecord(record)); // Use helper to format
+                    // Skip dummy records if they somehow persist
+                    if (record.get('Owner Last Name or Site Name') !== '--- SEASON DUMMY RECORD ---') {
+                        projects.push(processRecord(record));
+                    }
                 });
                 fetchNextPage(); // IMPORTANT: Call this to get the next page
             },
@@ -235,299 +202,109 @@ const getProjectsBySeason = async (season) => {
     });
 };
 
-/**
- * Fetches detailed information for a single project by its Airtable record ID.
- */
+// --- Keep getProjectDetails (uses Data API) ---
 const getProjectDetails = async (recordId) => {
     try {
         console.log(`Fetching details for record: ${recordId}`);
         const record = await table.find(recordId);
         if (!record) {
-            throw new Error('Project not found.'); // Or return null? Depends on desired API behavior
+            throw new Error('Project not found.');
         }
-        return processRecord(record); // Use helper to format
+        // Optional: Check if it's the dummy record before processing
+        if (record.get('Owner Last Name or Site Name') === '--- SEASON DUMMY RECORD ---') {
+            console.warn(`Attempted to fetch details for a dummy record: ${recordId}`);
+            throw new Error('Project not found.'); // Treat dummy as not found
+        }
+        return processRecord(record);
     } catch (error) {
         console.error(`Error fetching project details for ${recordId}:`, error);
-        // Handle Airtable's specific "NOT_FOUND" error
         if (error.message && error.message.includes('NOT_FOUND')) {
-            throw new Error('Project not found.'); // Throw a clearer error for the controller
+            throw new Error('Project not found.');
         }
         throw new Error(`Failed to fetch project details: ${error.message}`);
     }
 };
 
-/**
- * Adds a new option (like '25-26') to the 'Season' single-select field choices.
- * NOTE: This uses the METADATA API and is more complex/potentially disruptive.
- *       Requires 'schema.bases:write' scope for the PAT.
- */
-//const addSeasonOption = async (newSeasonName) => {
-//    if (!AIRTABLE_SEASON_FIELD_ID) {
-//        throw new Error("AIRTABLE_SEASON_FIELD_ID is not configured in .env");
-//    }
-//    try {
-//        console.log(`Attempting to add season option: ${newSeasonName}`);
-//
-//        // 1. Get current field definition
-//        console.log(`Fetching current options for field ${AIRTABLE_SEASON_FIELD_ID}`);
-//        console.log("--------HERE!!!!");
-//        const fieldGetResponse = await metadataApi.get(`/tables/${AIRTABLE_TABLE_ID}/fields/${AIRTABLE_SEASON_FIELD_ID}`);
-//        console.log("--------HERE222222!!!!");
-//        const currentField = fieldGetResponse.data;
-//
-//
-//        if (currentField.type !== 'singleSelect') {
-//            throw new Error(`Field ${AIRTABLE_SEASON_FIELD_ID} is not a singleSelect field.`);
-//        }
-//
-//        const currentChoices = currentField.options?.choices || [];
-//
-//        // 2. Check if option already exists
-//        if (currentChoices.some(choice => choice.name === newSeasonName)) {
-//            console.log(`Season option "${newSeasonName}" already exists.`);
-//            return { message: `Season option "${newSeasonName}" already exists.` }; // Or throw error? Indicate success?
-//        }
-//
-//        // 3. Prepare new choices array
-//        const newChoices = [
-//            ...currentChoices,
-//            { name: newSeasonName } // Airtable usually assigns ID and color automatically on PATCH
-//            // If you needed to specify color: { name: newSeasonName, color: 'blueLight2' }
-//        ];
-//
-//        // 4. PATCH the field with the updated options
-//        console.log(`Patching field ${AIRTABLE_SEASON_FIELD_ID} with new choices...`);
-//        const patchPayload = {
-//            // id: AIRTABLE_SEASON_FIELD_ID, // ID not needed in payload usually
-//            name: currentField.name, // Best practice to include name
-//            description: currentField.description || null, // Include description if it exists
-//            type: 'singleSelect', // Must specify type
-//            options: { // Must send the *entire* options object
-//                choices: newChoices
-//            }
-//        };
-//
-//        const patchResponse = await metadataApi.patch(`/tables/${AIRTABLE_TABLE_ID}/fields/${AIRTABLE_SEASON_FIELD_ID}`, patchPayload);
-//
-//        console.log(`Successfully added season option: ${newSeasonName}`);
-//        return patchResponse.data; // Return the updated field definition
-//
-//    } catch (error) {
-//        console.error('Error adding season option:', error.response?.data || error.message);
-//        const errMsg = error.response?.data?.error?.message || error.message;
-//        // Check for permission errors
-//        if (errMsg.includes('update field')) {
-//            throw new Error(`Failed to add season option: Permission denied. Ensure PAT has 'schema.bases:write' scope.`);
-//        }
-//        throw new Error(`Failed to add season option: ${errMsg}`);
-//    }
-//};
 
+// --- REPLACE addSeasonOption with the dummy record workaround ---
 /**
- * Adds a new option (like '25-26') to the 'Season' single-select field choices.
- * NOTE: This uses the METADATA API and modifies the schema.
- *       Requires PAT scope 'schema.bases:write' for the PATCH operation.
- *       Uses the /tables endpoint to retrieve current field options as an alternative.
+ * Attempts to add a new season option by creating and deleting a dummy record.
+ * Requires 'data.records:write' scope for the PAT.
  */
 const addSeasonOption = async (newSeasonName) => {
-    if (!AIRTABLE_SEASON_FIELD_ID) {
-        throw new Error("AIRTABLE_SEASON_FIELD_ID is not configured in .env");
-    }
-    if (!AIRTABLE_TABLE_ID) {
-        throw new Error("AIRTABLE_TABLE_ID is not configured in .env");
-    }
-
+    let dummyRecordId = null;
     try {
-        console.log(`Attempting to add season option: ${newSeasonName}`);
+        console.log(`Attempting to add season '${newSeasonName}' via dummy record workaround...`);
 
-        // 1. Get current table schemas for the base
-        console.log(`Fetching table schemas for base ${AIRTABLE_BASE_ID}...`);
-        const tablesResponse = await metadataApi.get(`/tables`);
-        const tablesData = tablesResponse.data.tables;
+        // Define fields for the dummy record. Include MINIMUM required fields.
+        // **Crucially, include fields needed for the UniqueID formula**
+        const dummyRecordFields = {
+            // The new season name is the key part
+            [FIELD_MAP.apiToAirtable.season || 'Season']: newSeasonName,
 
-        // 2. Find the target table
-        const targetTable = tablesData.find(t => t.id === AIRTABLE_TABLE_ID);
-        if (!targetTable) {
-            throw new Error(`Table with ID ${AIRTABLE_TABLE_ID} not found in base metadata.`);
-        }
+            // Placeholders for fields required by UniqueID formula or table rules
+            [FIELD_MAP.apiToAirtable.ownerLastName || 'Owner Last Name or Site Name']: '--- SEASON DUMMY RECORD ---',
+            [FIELD_MAP.apiToAirtable.propertyId || 'Property ID Number(s)']: 'DUMMY',
+            [FIELD_MAP.apiToAirtable.siteNumber || 'Site Number']: 0, // Or another placeholder number
 
-        // 3. Find the target field within the table schema
-        // services/airtableService.js
-        // ... inside addSeasonOption function ...
-
-        // 3. Find the target field within the table schema
-        let currentField = targetTable.fields.find(f => f.id === AIRTABLE_SEASON_FIELD_ID); // Use 'let' so we can potentially reassign
-
-        if (!currentField) {
-            // If not found by ID, try finding by name as a fallback
-            console.log(`Field with ID ${AIRTABLE_SEASON_FIELD_ID} not found, trying by name 'Season'...`);
-            const fieldByName = targetTable.fields.find(f => f.name === 'Season');
-
-            if (!fieldByName) {
-                // If still not found even by name, throw the error
-                throw new Error(`Field with ID ${AIRTABLE_SEASON_FIELD_ID} (or name 'Season') not found in table ${AIRTABLE_TABLE_ID}.`);
-            } else {
-                // If found by name, log a warning and use this field object
-                console.warn(`Warning: Found 'Season' field by name, but configured ID ${AIRTABLE_SEASON_FIELD_ID} might be incorrect. Using field ID: ${fieldByName.id}`);
-                currentField = fieldByName; // Assign the field found by name to currentField
-                // Consider updating AIRTABLE_SEASON_FIELD_ID in memory if needed, though usually not necessary here
-                // AIRTABLE_SEASON_FIELD_ID = fieldByName.id;
-            }
-        }
-
-        // Now continue checks using the potentially reassigned currentField
-        if (!currentField) {
-            // This check is now redundant due to the throw above, but safe to keep
-            throw new Error(`Could not identify the 'Season' field in table ${AIRTABLE_TABLE_ID}.`);
-        }
-
-        if (currentField.type !== 'singleSelect') {
-            throw new Error(`Field ${currentField.name} (ID: ${currentField.id}) is not a singleSelect field.`);
-        }
-
-        const currentChoices = currentField.options?.choices || [];
-        console.log(`Current choices for '${currentField.name}':`, currentChoices.map(c => c.name).join(', '));
-
-        // services/airtableService.js
-        // ... inside addSeasonOption function, after finding currentField and currentChoices ...
-
-        // 4. Check if option already exists
-        if (currentChoices.some(choice => choice.name === newSeasonName)) {
-            console.log(`Season option "${newSeasonName}" already exists.`);
-            return { message: `Season option "${newSeasonName}" already exists.`, field: currentField };
-        }
-
-        // 5. Prepare new choices array - **KEEP NAME/COLOR FOR EXISTING (NO ID), ADD NEW WITH NAME/COLOR**
-        const newChoicesPayload = currentChoices.map(choice => ({
-            name: choice.name,      // Keep name
-            color: choice.color     // Keep color
-            // DO NOT include choice.id here
-        }));
-        newChoicesPayload.push({ name: newSeasonName, color: 'blueLight2' }); // Add new with name and color
-
-        // 6. PATCH the specific field endpoint - Include name, type, AND options (without existing IDs)
-        console.log(`Patching field ${currentField.id} ('${currentField.name}') removing IDs from existing choices...`);
-        const patchPayload = {
-            name: currentField.name,         // Include the current field name
-            type: 'singleSelect',            // Include the field type
-            options: {
-                choices: newChoicesPayload   // Use the array where existing choices lack 'id'
-            }
-            // description: currentField.description || undefined
+            // Add any other fields marked as REQUIRED in your Airtable table settings
+            [FIELD_MAP.apiToAirtable.address || 'Property Address']: '--- DO NOT USE ---', // Likely required
+            // Intentionally omit description and other non-essential fields
         };
 
-        // Construct the specific field URL for the PATCH request
-        const fieldPatchUrl = `/tables/${AIRTABLE_TABLE_ID}/fields/${currentField.id}`;
-        console.log("Attempting PATCH to:", metadataApi.defaults.baseURL + fieldPatchUrl);
-        console.log("PATCH Payload:", JSON.stringify(patchPayload, null, 2));
+        console.log('Creating dummy record with fields:', dummyRecordFields);
 
-        const patchResponse = await metadataApi.patch(fieldPatchUrl, patchPayload);
+        // Create the dummy record
+        const createdRecords = await table.create([{ fields: dummyRecordFields }], { typecast: true });
 
-        console.log(`Successfully added season option: ${newSeasonName}`);
-        return patchResponse.data; // Return the updated field definition
+        if (!createdRecords || createdRecords.length === 0) {
+            throw new Error('Dummy record creation failed, no record returned.');
+        }
+        dummyRecordId = createdRecords[0].id;
+        console.log(`Successfully created dummy record ID: ${dummyRecordId} for season '${newSeasonName}'`);
+
+        // Immediately delete the dummy record
+        console.log(`Deleting dummy record ID: ${dummyRecordId}`);
+        const deletedRecord = await table.destroy(dummyRecordId);
+
+        // Check if deletion was successful (optional, destroy returns the deleted record)
+        if (deletedRecord?.id !== dummyRecordId) {
+            console.warn(`Potential issue deleting dummy record ${dummyRecordId}. Manual check may be needed.`);
+        } else {
+            console.log(`Successfully deleted dummy record ID: ${dummyRecordId}`);
+        }
+
+        return { message: `Season option '${newSeasonName}' potentially added via dummy record. Please verify in Airtable UI.` };
 
     } catch (error) {
-        // ... keep existing catch block ...
-        console.error('Error adding season option:');
-        if (error.response) {
-            console.error('Status:', error.response.status);
-            console.error('Data:', JSON.stringify(error.response.data, null, 2));
-            console.error('Headers:', error.response.headers);
-            const errMsg = error.response?.data?.error?.message || error.response?.data?.error || `Request failed with status code ${error.response.status}`;
-            if (error.response.status === 403 || (typeof errMsg === 'string' && (errMsg.includes('permission') || errMsg.includes('update field')))) {
-                throw new Error(`Failed to update season option: Permission denied. Ensure PAT has 'schema.bases:write' scope.`);
+        console.error(`Error in dummy record workaround for season '${newSeasonName}':`, error);
+
+        // Attempt to clean up the dummy record if creation succeeded but deletion failed
+        if (dummyRecordId) {
+            console.warn(`Attempting cleanup: Deleting potentially orphaned dummy record ${dummyRecordId}`);
+            try {
+                await table.destroy(dummyRecordId);
+                console.log(`Cleanup successful for dummy record ${dummyRecordId}`);
+            } catch (cleanupError) {
+                console.error(`Cleanup failed for dummy record ${dummyRecordId}:`, cleanupError);
+                // Log this prominently - requires manual deletion in Airtable
+                console.error(`!!! MANUAL ACTION REQUIRED: Delete dummy record ${dummyRecordId} in Airtable !!!`);
             }
-            if (error.response.status === 404) {
-                throw new Error(`Failed to update season option: Field or Table not found (404). Check IDs used for PATCH: Table=${AIRTABLE_TABLE_ID}, Field=${currentField?.id || AIRTABLE_SEASON_FIELD_ID}`);
-            }
-            if (error.response.status === 422) {
-                throw new Error(`Failed to update season option: Invalid payload structure or data (422). ${errMsg}`);
-            }
-            throw new Error(`Failed to add season option: ${errMsg}`);
-        } else if (error.request) {
-            console.error('Network Error: No response received from Airtable.');
-            throw new Error('Failed to add season option: Network Error');
-        } else {
-            console.error('Request Setup Error:', error.message);
-            throw new Error(`Failed to add season option: ${error.message}`);
         }
+        // Rethrow a user-friendly error
+        const errMsg = error.message || 'Unknown error during season add workaround.';
+        if (errMsg.includes('INVALID_VALUE_FOR_COLUMN')) {
+            throw new Error(`Failed to add season: Invalid value for a required field in dummy record. ${errMsg}`);
+        }
+        if (errMsg.includes('INVALID_MULTIPLE_CHOICE_OPTION')) { // Or similar for select
+            throw new Error(`Failed to add season: '${newSeasonName}' might already exist or is invalid. ${errMsg}`);
+        }
+        throw new Error(`Failed to add season option using workaround: ${errMsg}`);
     }
 };
-//        // 4. Check if option already exists
-//        if (currentChoices.some(choice => choice.name === newSeasonName)) {
-//            console.log(`Season option "${newSeasonName}" already exists.`);
-//            // Return the current field definition maybe? Or just a success message.
-//            return { message: `Season option "${newSeasonName}" already exists.`, field: currentField };
-//        }
-//
-//        // 5. Prepare new choices array
-//        const newChoices = [
-//            ...currentChoices,
-//            { name: newSeasonName } // Airtable assigns ID and color automatically on PATCH
-//        ];
-//
-//        // 6. PATCH the specific field endpoint with the updated options
-//        // NOTE: We STILL use the specific field endpoint for the PATCH operation,
-//        // as that's the correct way to update a single field's schema.
-//        console.log(`Patching field ${currentField.id} ('${currentField.name}') with new choices...`);
-//        const patchPayload = {
-//            // id: currentField.id, // Usually not needed in payload
-//            name: currentField.name, // Best practice to include name
-//            description: currentField.description || undefined, // Include description if it exists, otherwise undefined (don't send null if it wasn't there)
-//            type: 'singleSelect', // Must specify type
-//            options: { // Must send the *entire* options object
-//                choices: newChoices
-//            }
-//        };
-//
-//        // Construct the specific field URL for the PATCH request
-//        const fieldPatchUrl = `/tables/${AIRTABLE_TABLE_ID}/fields/${currentField.id}`;
-//        console.log("Attempting PATCH to:", metadataApi.defaults.baseURL + fieldPatchUrl);
-//        console.log("PATCH Payload:", JSON.stringify(patchPayload, null, 2));
-//
-//
-//        const patchResponse = await metadataApi.patch(fieldPatchUrl, patchPayload);
-//
-//        console.log(`Successfully added season option: ${newSeasonName}`);
-//        return patchResponse.data; // Return the updated field definition
-//
-//    } catch (error) {
-//        console.error('Error adding season option:');
-//        if (error.response) {
-//            console.error('Status:', error.response.status);
-//            console.error('Data:', JSON.stringify(error.response.data, null, 2));
-//            console.error('Headers:', error.response.headers);
-//            const errMsg = error.response?.data?.error?.message || error.response?.data?.error || `Request failed with status code ${error.response.status}`;
-//            // Check for permission errors specifically on the PATCH
-//            if (error.response.status === 403 || (typeof errMsg === 'string' && (errMsg.includes('permission') || errMsg.includes('update field')))) {
-//                throw new Error(`Failed to update season option: Permission denied. Ensure PAT has 'schema.bases:write' scope.`);
-//            }
-//            // Check for 404 on PATCH (could still mean ID issue)
-//            if (error.response.status === 404) {
-//                throw new Error(`Failed to update season option: Field or Table not found (404). Check IDs used for PATCH: Table=${AIRTABLE_TABLE_ID}, Field=${currentField?.id || AIRTABLE_SEASON_FIELD_ID}`);
-//            }
-//            // Handle validation errors (e.g., 422 Unprocessable Entity)
-//            if (error.response.status === 422) {
-//                throw new Error(`Failed to update season option: Invalid data (422). ${errMsg}`);
-//            }
-//            throw new Error(`Failed to add season option: ${errMsg}`);
-//        } else if (error.request) {
-//            console.error('Network Error: No response received from Airtable.');
-//            throw new Error('Failed to add season option: Network Error');
-//        } else {
-//            console.error('Request Setup Error:', error.message);
-//            throw new Error(`Failed to add season option: ${error.message}`);
-//        }
-//    }
-//};
 
 
-// --- Also update getAllSeasons to use the same logic ---
-
-
-/**
- * Adds a new project (record) to the Airtable table.
- */
+// --- Keep addProject (uses Data API) ---
 const addProject = async (projectData) => {
     try {
         // 1. Map incoming API data to Airtable field names/IDs
@@ -535,8 +312,6 @@ const addProject = async (projectData) => {
         for (const apiKey in projectData) {
             const airtableField = FIELD_MAP.apiToAirtable[apiKey];
             if (airtableField) {
-                // Basic validation/transformation could happen here
-                // e.g., ensure dates are in correct format if needed
                 airtableRecordData[airtableField] = projectData[apiKey];
             } else if (apiKey === 'season') { // Handle season specifically if not directly mapped
                 airtableRecordData[FIELD_MAP.apiToAirtable.season || 'Season'] = projectData.season;
@@ -547,20 +322,30 @@ const addProject = async (projectData) => {
         if (!airtableRecordData[FIELD_MAP.apiToAirtable.season || 'Season']) {
             throw new Error("Season is required to add a project.");
         }
+        // Ensure fields needed for UniqueID are present if creating
         if (!airtableRecordData[FIELD_MAP.apiToAirtable.ownerLastName || 'Owner Last Name or Site Name']) {
             throw new Error("Owner Last Name/Site Name is required.");
         }
-        if (!airtableRecordData[FIELD_MAP.apiToAirtable.address || 'Property Address']) {
-            throw new Error("Property Address is required.");
+        if (!airtableRecordData[FIELD_MAP.apiToAirtable.propertyId || 'Property ID Number(s)']) {
+            console.warn("Warning: 'Property ID Number(s)' is missing, UniqueID may not calculate correctly.");
+            // Consider throwing error if it's strictly required for UniqueID:
+            // throw new Error("Property ID Number(s) is required.");
         }
-        // Add more required field checks as needed
+        if (airtableRecordData[FIELD_MAP.apiToAirtable.siteNumber || 'Site Number'] === undefined) { // Check for undefined specifically
+            console.warn("Warning: 'Site Number' is missing, UniqueID may not calculate correctly.");
+            // Consider throwing error if it's strictly required for UniqueID:
+            // throw new Error("Site Number is required.");
+        }
+        // Add other required field checks as needed based on Airtable UI
+        if (!airtableRecordData[FIELD_MAP.apiToAirtable.address || 'Property Address']) {
+            throw new Error("Property Address is required."); // Example check
+        }
+
 
         console.log('Creating Airtable record with data:', airtableRecordData);
 
         // 2. Use the Airtable client to create the record
-        // Airtable library expects an array of records, even for a single creation
         const createdRecords = await table.create([{ fields: airtableRecordData }], { typecast: true });
-        // { typecast: true } attempts to automatically convert string values etc.
 
         if (!createdRecords || createdRecords.length === 0) {
             throw new Error('Record creation failed, no record returned.');
@@ -572,7 +357,6 @@ const addProject = async (projectData) => {
 
     } catch (error) {
         console.error('Error adding project:', error);
-        // Provide more specific error feedback if possible
         const errMsg = error.message || 'Failed to add project.';
         if (errMsg.includes('UNKNOWN_FIELD_NAME')) {
             throw new Error(`Failed to add project: Invalid field name provided. Check FIELD_MAP. ${errMsg}`);
@@ -580,25 +364,19 @@ const addProject = async (projectData) => {
         if (errMsg.includes('INVALID_VALUE_FOR_COLUMN')) {
             throw new Error(`Failed to add project: Invalid value for a field. ${errMsg}`);
         }
+        if (errMsg.includes('REQUIRED_FIELD_MISSING')) { // Common Airtable error type
+            throw new Error(`Failed to add project: A required field is missing. ${errMsg}`);
+        }
         throw new Error(`Failed to add project: ${errMsg}`);
     }
 };
 
 
-//module.exports = {
-//    getAllSeasons,
-//    getProjectsBySeason,
-//    getProjectDetails,
-//    addSeasonOption,
-//    addProject,
-//};
-
-
-// --- Make sure to export it ---
+// --- Exports ---
 module.exports = {
-    getAllSeasons, // Assuming this uses the same /tables logic now
+    getAllSeasons,
     getProjectsBySeason,
     getProjectDetails,
-    addSeasonOption, // Export the modified function
+    addSeasonOption, // Export the new workaround function
     addProject,
 };
