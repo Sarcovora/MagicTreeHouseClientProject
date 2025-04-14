@@ -1,8 +1,8 @@
 // src/pages/admin/AdminDashboard.jsx
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom"; // Import Link
-import AddNewFolderIcon from "../../assets/icons/AddNewFolder.svg?react"; // Renamed for clarity
-import AddNewProjectIcon from "../../assets/icons/AddNewProject.svg?react"; // Renamed for clarity
+import AddNewFolderIcon from "../../assets/icons/addNewFolder.svg?react";
+import AddNewProjectIcon from "../../assets/icons/addNewProject.svg?react";
 
 import ProjectCard from "../../components/projects/ProjectCard";
 import SeasonCard from "../../components/SeasonCard"; // Corrected path assumption
@@ -45,19 +45,19 @@ const AdminDashboard = () => {
   // Filter projects based on search term (only when viewMode is 'projects')
   const filteredProjects = viewMode === 'projects'
     ? projects.filter(
-        (project) =>
-          project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (project.address && project.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (project.landowner && project.landowner.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
+      (project) =>
+        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (project.address && project.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (project.landowner && project.landowner.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
     : []; // No filtering needed for seasons view based on project details
 
   // Filter seasons based on search term (simple year match)
-   const filteredSeasons = viewMode === 'seasons'
+  const filteredSeasons = viewMode === 'seasons'
     ? seasons.filter(
-        (season) =>
-          season.year.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      (season) =>
+        season.year.toLowerCase().includes(searchTerm.toLowerCase())
+    )
     : [];
 
   const renderContent = () => {
@@ -75,10 +75,10 @@ const AdminDashboard = () => {
 
     if (viewMode === "projects") {
       if (filteredProjects.length === 0 && searchTerm) {
-         return <div className="text-center text-gray-500">No projects match your search.</div>;
+        return <div className="text-center text-gray-500">No projects match your search.</div>;
       }
       if (projects.length === 0) {
-          return <div className="text-center text-gray-500">No projects found. <Link to="/admin/add-project" className="text-green-600 hover:underline">Add a new project</Link> to get started.</div>; // Added link suggestion
+        return <div className="text-center text-gray-500">No projects found. <Link to="/admin/add-project" className="text-green-600 hover:underline">Add a new project</Link> to get started.</div>; // Added link suggestion
       }
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -88,11 +88,11 @@ const AdminDashboard = () => {
         </div>
       );
     } else { // Seasons view
-        if (filteredSeasons.length === 0 && searchTerm) {
-         return <div className="text-center text-gray-500">No seasons match your search.</div>;
+      if (filteredSeasons.length === 0 && searchTerm) {
+        return <div className="text-center text-gray-500">No seasons match your search.</div>;
       }
-       if (seasons.length === 0) {
-          return <div className="text-center text-gray-500">No seasons found. Click 'Add New Folder' to create one.</div>;
+      if (seasons.length === 0) {
+        return <div className="text-center text-gray-500">No seasons found. Click 'Add New Folder' to create one.</div>;
       }
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -111,7 +111,7 @@ const AdminDashboard = () => {
     <>
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center">
-           {/* Title and Add Button */}
+          {/* Title and Add Button */}
           <div className="mb-4 sm:mb-0">
             <h1 className="text-2xl font-semibold mb-2">
               {viewMode === "projects"
@@ -121,15 +121,15 @@ const AdminDashboard = () => {
             {/* Conditionally render Add Button - Will add functionality later */}
             {viewMode === "seasons" ? (
               <button className="flex items-center px-3 py-2 bg-green-800 text-white text-sm rounded-lg hover:bg-green-700 transition-colors">
-                 <AddNewFolderIcon className="w-5 h-5 mr-2 fill-current" />
-                 Add New Folder
+                <AddNewFolderIcon className="w-5 h-5 mr-2 fill-current" />
+                Add New Folder
               </button>
               // <AddNewFolderIcon className="h-10 w-auto cursor-pointer" title="Add New Season Folder"/> // Simple icon button
             ) : (
-               <button className="flex items-center px-3 py-2 bg-green-800 text-white text-sm rounded-lg hover:bg-green-700 transition-colors">
-                  <AddNewProjectIcon className="w-5 h-5 mr-2 fill-current" />
-                 Add New Project
-               </button>
+              <button className="flex items-center px-3 py-2 bg-green-800 text-white text-sm rounded-lg hover:bg-green-700 transition-colors">
+                <AddNewProjectIcon className="w-5 h-5 mr-2 fill-current" />
+                Add New Project
+              </button>
               // <AddNewProjectIcon className="h-10 w-auto cursor-pointer" title="Add New Project"/> // Simple icon button
             )}
           </div>
@@ -137,21 +137,19 @@ const AdminDashboard = () => {
           {/* View Mode Toggles */}
           <div className="flex space-x-2 self-start sm:self-center">
             <button
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                viewMode === "projects"
-                  ? "bg-green-600 text-white shadow-sm"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${viewMode === "projects"
+                ? "bg-green-600 text-white shadow-sm"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
               onClick={() => setViewMode("projects")}
             >
               Projects
             </button>
             <button
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                viewMode === "seasons"
-                  ? "bg-green-600 text-white shadow-sm"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${viewMode === "seasons"
+                ? "bg-green-600 text-white shadow-sm"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
               onClick={() => setViewMode("seasons")}
             >
               Seasons
@@ -162,14 +160,14 @@ const AdminDashboard = () => {
         {/* Search Bar */}
         <div className="mt-6">
           <SearchBar
-              value={searchTerm}
-              onChange={setSearchTerm}
-              placeholder={viewMode === 'projects' ? "Search projects by name, address, landowner..." : "Search seasons by year..."}
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder={viewMode === 'projects' ? "Search projects by name, address, landowner..." : "Search seasons by year..."}
           />
         </div>
       </div>
 
-       {/* Content Area */}
+      {/* Content Area */}
       {renderContent()}
     </>
   );
