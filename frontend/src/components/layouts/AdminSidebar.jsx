@@ -66,7 +66,7 @@ const AdminSidebar = () => {
     <div className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col shrink-0">
       {/* Logo Section */}
       <div className="p-6 border-b border-gray-200">
-        <Link to="/admin/dashboard" className="flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-green-500 rounded">
+        <Link to="/admin/dashboard" className="flex items-center justify-center focus:outline-none d">
           <TreeFolks className="w-32 h-32 text-green-600" />
         </Link>
       </div>

@@ -204,7 +204,7 @@ const mockProjects = [
   
   export const getSeasons = async () => {
     await simulateDelay();
-    console.log("API Call: getSeasons -> Returning:", mockSeasons);
+    // console.log("API Call: getSeasons -> Returning:", mockSeasons);
     // In a real API, you might calculate project counts here or the backend would provide them
       const seasonsWithCounts = mockSeasons.map(season => ({
           ...season,
@@ -215,14 +215,14 @@ const mockProjects = [
   
   export const getAllProjects = async () => {
     await simulateDelay();
-    console.log("API Call: getAllProjects -> Returning:", mockProjects);
+    // console.log("API Call: getAllProjects -> Returning:", mockProjects);
     return [...mockProjects]; // Return a copy
   };
   
   export const getProjectsBySeason = async (seasonYear) => {
       await simulateDelay();
       const projects = mockProjects.filter(p => p.seasonYear === seasonYear);
-      console.log(`API Call: getProjectsBySeason(${seasonYear}) -> Returning:`, projects);
+    //   console.log(`API Call: getProjectsBySeason(${seasonYear}) -> Returning:`, projects);
       return [...projects]; // Return a copy
   };
   
@@ -321,6 +321,28 @@ const mockProjects = [
   };
   
   
+  
+export const deleteSeason = async (seasonId) => {
+    await simulateDelay();
+    const seasonIndex = mockSeasons.findIndex(s => s.id === seasonId);
+    if (seasonIndex !== -1) {
+        // Check if the season has projects before deleting
+        if (mockSeasons[seasonIndex].projectCount > 0) {
+            console.error(`API Call: deleteSeason(${seasonId}) -> Failed: Season has projects.`);
+            // Throw an error that can be caught by the frontend
+            throw new Error(`Cannot delete season "${mockSeasons[seasonIndex].year}" because it contains projects. Please move or delete the projects first.`);
+        }
+
+        // Proceed with deletion if project count is 0
+        mockSeasons.splice(seasonIndex, 1);
+        console.log(`API Call: deleteSeason(${seasonId}) -> Success`);
+        return { success: true };
+    }
+    console.error(`API Call: deleteSeason(${seasonId}) -> Season not found`);
+    return { success: false }; // Or throw not found error
+};
+
+
   export const getDocuments = async (filters = {}) => {
       await simulateDelay();
       let results = [...mockDocuments]; // Return a copy
@@ -480,6 +502,7 @@ const mockProjects = [
     addProject,
     updateProject,
     deleteProject,
+    deleteSeason, // Add deleteSeason here
     getDocuments,
     getDocumentDetails,
     addDocument,
