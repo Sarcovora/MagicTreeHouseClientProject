@@ -33,11 +33,11 @@ const metadataApi = axios.create({
 const FIELD_MAP = {
     // Input: API Key -> Output: Airtable Field Name or ID
     apiToAirtable: {
-        title: 'UniqueID', // Or map to a more appropriate title field if UniqueID isn't it
+        title: 'UniqueID',
         ownerFirstName: 'Owner First Name or Organization',
         ownerLastName: 'Owner Last Name or Site Name', // Used for display name
         address: 'Property Address',
-        plantingDate: 'Planting Date', // Or Application Date? Choose the most relevant date
+        plantingDate: 'Planting Date',
         phone: 'Primary Phone Number',
         email: 'Email',
         season: 'Season', // Field name for filtering/creating
@@ -51,9 +51,8 @@ const FIELD_MAP = {
         consultationDate: 'Consultation Date',
         flaggingDate: 'Flagging Date',
         applicationDate: 'Application Date',
-        siteNumber: 'Site Number', // **Added Site Number for UniqueID**
-        // Add other fields you want to create/update
-        initialMap: 'Initial Map', // Attachment field example
+        siteNumber: 'Site Number',
+        initialMap: 'Initial Map',
         draftMap: 'Draft Map',
         finalMap: 'Final Map',
         plantingPhotos: 'Planting Photos',
@@ -62,7 +61,7 @@ const FIELD_MAP = {
     // Input: Airtable Field Name or ID -> Output: API Key
     airtableToApi: {
         'UniqueID': 'uniqueId', // Primary key, good to have
-        'Owner Last Name or Site Name': 'ownerDisplayName', // Combine first/last if needed
+        'Owner Last Name or Site Name': 'ownerDisplayName',
         'Owner First Name or Organization': 'ownerFirstName',
         'Property Address': 'address',
         'Planting Date': 'plantingDate',
@@ -78,18 +77,16 @@ const FIELD_MAP = {
         'Total Trees': 'totalTrees',
         'Primary Phone Number': 'phone',
         'Email': 'email',
-        // Map attachment fields - we'll extract the URL
         'Initial Map': 'initialMapUrl',
         'Draft Map': 'draftMapUrl',
         'Final Map': 'finalMapUrl',
-        'Planting Photos': 'plantingPhotoUrls', // Can be multiple
+        'Planting Photos': 'plantingPhotoUrls',
         'Before Photos': 'beforePhotoUrls',
-        // Add any other fields you want returned by GetProjectDetails
         'Land Region': 'landRegion',
         'Contact Date': 'contactDate',
         'Consultation Date': 'consultationDate',
         'Flagging Date': 'flaggingDate',
-        'Site Number': 'siteNumber', // **Added Site Number for UniqueID**
+        'Site Number': 'siteNumber',
         'Participation status': 'participationStatus',
     }
 };
