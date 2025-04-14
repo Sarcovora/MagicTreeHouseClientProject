@@ -52,6 +52,7 @@ function App() {
         </Route>
         {/* Landowner Routes */}
         <Route path="/landowner" element={<LandownerLayout />}>
+           <Route index element={<Navigate to="dashboard" replace />} />
            <Route path="dashboard" element={<LandownerDashboard />} />
             {/* Add placeholder for landowner notifications if sidebar links there */}
             {/* <Route path="notifications" element={<LandownerNotifications />} /> */}
