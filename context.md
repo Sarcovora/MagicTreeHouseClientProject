@@ -3402,3 +3402,5 @@ export default defineConfig({
 });
 
 AGAIN, I want you to tell me your approach for tackling each priority, then get the get go from me, then implement it in the respective files, adhering to modularity (creating files if needed) and giving me the full code.
+
+if the change is very minimal (im talking less than 2 local changes or on the order of ONLY 5-10 lines) then you dont have to give me the whole file
