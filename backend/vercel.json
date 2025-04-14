@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      // Specify the entry point relative to the root
+      "src": "server.js",
+      // Explicitly tell Vercel to use the Node.js builder
+      "use": "@vercel/node"
+    }
+  ],
+  "rewrites": [
+    // Route all incoming requests to the Node.js function
+    // This assumes your Express app handles all routing starting from "/"
+    // (like your current '/api/...' routes)
+    {
+      "source": "/(.*)", // Match any path
+      "destination": "server.js" // Route it to the built function
+    }
+  ]
+}
