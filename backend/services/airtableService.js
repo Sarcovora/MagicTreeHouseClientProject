@@ -37,7 +37,7 @@ const FIELD_MAP = {
         ownerFirstName: 'Owner First Name or Organization',
         ownerLastName: 'Owner Last Name or Site Name', // Used for display name
         address: 'Property Address',
-        date: 'Planting Date', // Or Application Date? Choose the most relevant date
+        plantingDate: 'Planting Date', // Or Application Date? Choose the most relevant date
         phone: 'Primary Phone Number',
         email: 'Email',
         season: 'Season', // Field name for filtering/creating
