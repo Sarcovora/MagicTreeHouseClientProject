@@ -56,6 +56,7 @@ const FIELD_MAP = {
         draftMap: 'Draft Map',
         finalMap: 'Final Map',
         plantingPhotos: 'Planting Photos',
+        propertyImages: 'Property Images',
         participationStatus: 'Participation status',
     },
     // Input: Airtable Field Name or ID -> Output: API Key
@@ -82,6 +83,7 @@ const FIELD_MAP = {
         'Final Map': 'finalMapUrl',
         'Planting Photos': 'plantingPhotoUrls',
         'Before Photos': 'beforePhotoUrls',
+        'Property Images': 'propertyImageUrls',
         'Land Region': 'landRegion',
         'Contact Date': 'contactDate',
         'Consultation Date': 'consultationDate',
@@ -101,15 +103,14 @@ const processRecord = (record) => {
         if (value !== undefined) {
             // Handle attachments specifically: extract URL(s)
             if (Array.isArray(value) && value[0]?.url) { // Check if it looks like an attachment array
-                if (value.length === 1) {
-                    // If only one attachment, return just the URL (unless it's a designated multi-photo field)
-                    if (['plantingPhotoUrls', 'beforePhotoUrls'].includes(apiKey)) {
-                        processed[apiKey] = value.map(att => att.url);
-                    } else {
-                        processed[apiKey] = value[0].url;
-                    }
+                // Multi-image fields: always return as array
+                if (['plantingPhotoUrls', 'beforePhotoUrls', 'propertyImageUrls'].includes(apiKey)) {
+                    processed[apiKey] = value.map(att => att.url);
+                } else if (value.length === 1) {
+                    // Single attachment fields: return just the URL
+                    processed[apiKey] = value[0].url;
                 } else {
-                    // If multiple attachments, return array of URLs
+                    // Multiple attachments in a non-multi field: return array of URLs
                     processed[apiKey] = value.map(att => att.url);
                 }
             } else {

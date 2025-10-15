@@ -109,7 +109,8 @@ GET /api/projects/season/24-25
     "draftMapUrl": "https://...",
     "finalMapUrl": "https://...",
     "plantingPhotoUrls": ["https://...", "https://..."],
-    "beforePhotoUrls": ["https://...", "https://..."]
+    "beforePhotoUrls": ["https://...", "https://..."],
+    "propertyImageUrls": ["https://...", "https://..."]
   }
 ]
 ```
@@ -464,6 +465,7 @@ interface Project {
   finalMapUrl?: string;            // URL to final map attachment
   plantingPhotoUrls?: string[];    // Array of planting photo URLs
   beforePhotoUrls?: string[];      // Array of before photo URLs
+  propertyImageUrls?: string[];    // Array of property image URLs
 }
 ```
 
@@ -496,6 +498,7 @@ When sending data to the API (POST requests), use these field names:
 | `draftMap` | Draft Map | attachment | No* |
 | `finalMap` | Final Map | attachment | No* |
 | `plantingPhotos` | Planting Photos | attachment | No* |
+| `propertyImages` | Property Images | attachment | No* |
 
 *File attachments are not currently supported via the API
 
