@@ -13,9 +13,10 @@ http://localhost:3000/api
 2. [Get Projects by Season](#2-get-projects-by-season)
 3. [Get Project Details](#3-get-project-details)
 4. [Create New Project](#4-create-new-project)
-5. [Add New Season](#5-add-new-season)
-6. [Data Models](#data-models)
-7. [Error Handling](#error-handling)
+5. [Update Existing Project](#5-update-existing-project)
+6. [Add New Season](#6-add-new-season)
+7. [Data Models](#data-models)
+8. [Error Handling](#error-handling)
 
 ---
 
@@ -352,7 +353,144 @@ if (response.status === 201) {
 
 ---
 
-### 5. Add New Season
+### 5. Update Existing Project
+
+Updates an existing project record in Airtable. This endpoint allows partial updates - you only need to send the fields you want to change.
+
+**Endpoint**: `PATCH /api/projects/:recordId`
+
+**Authentication**: None required (uses backend PAT)
+
+**URL Parameters**:
+
+- `recordId` (string, required) - The Airtable record ID (starts with "rec")
+
+**Request Headers**:
+```
+Content-Type: application/json
+```
+
+**Request Body** (all fields optional - send only what you want to update):
+```json
+{
+  "city": "San Antonio",
+  "status": "Consultation Scheduled",
+  "phone": "(512) 555-9999",
+  "consultationDate": "2024-03-15"
+}
+```
+
+**Supported Update Fields**:
+
+- `season` (string) - Must be a valid season from the seasons list
+- `ownerFirstName` (string)
+- `ownerLastName` (string)
+- `address` (string)
+- `city` (string)
+- `zipCode` (string)
+- `county` (string)
+- `propertyId` (string)
+- `siteNumber` (number)
+- `phone` (string)
+- `email` (string)
+- `status` (string) - Must be a valid status option
+- `landRegion` (string)
+- `contactDate` (string, YYYY-MM-DD format)
+- `consultationDate` (string, YYYY-MM-DD format)
+- `applicationDate` (string, YYYY-MM-DD format)
+- `flaggingDate` (string, YYYY-MM-DD format)
+- `plantingDate` (string, YYYY-MM-DD format)
+- `participationStatus` (string)
+
+**Response**:
+```json
+{
+  "id": "recXXXXXXXXXXXXXX",
+  "uniqueId": "Doe PID12345 Site 1",
+  "ownerDisplayName": "Doe",
+  "ownerFirstName": "John",
+  "ownerFullName": "John Doe",
+  "address": "123 Main Street",
+  "city": "San Antonio",
+  "zipCode": "78701",
+  "county": "Travis",
+  "propertyId": "PID12345",
+  "siteNumber": 1,
+  "phone": "(512) 555-9999",
+  "email": "john.doe@example.com",
+  "status": "Consultation Scheduled",
+  "season": "24-25",
+  "landRegion": "Piney",
+  "participationStatus": "Participant",
+  "consultationDate": "2024-03-15"
+}
+```
+
+**Response Type**: `Project` (see [Data Models](#data-models))
+
+**Status Codes**:
+
+- `200 OK` - Project successfully updated
+- `400 Bad Request` - Missing record ID or invalid project data
+- `404 Not Found` - Project not found
+- `500 Internal Server Error` - Failed to update project
+
+**Notes**:
+
+- This is a **partial update** endpoint - you don't need to send all fields, only the ones you want to change
+- Fields not included in the request body will remain unchanged
+- The response contains the complete updated project with all fields
+- The `uniqueId` will be automatically recalculated if you update `ownerLastName`, `propertyId`, or `siteNumber`
+- Dates should be in `YYYY-MM-DD` format
+- File attachments (maps, photos) cannot be updated via this endpoint currently
+
+**Example Usage**:
+```javascript
+// JavaScript/React - Update project status and consultation date
+const recordId = 'recXXXXXXXXXXXXXX';
+const updates = {
+  status: 'Consultation Scheduled',
+  consultationDate: '2024-03-15'
+};
+
+const response = await fetch(`http://localhost:3000/api/projects/${recordId}`, {
+  method: 'PATCH',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(updates)
+});
+
+if (response.status === 404) {
+  console.log('Project not found');
+} else if (response.ok) {
+  const updatedProject = await response.json();
+  console.log('Project updated:', updatedProject.id);
+}
+```
+
+**Example Usage - Update Multiple Fields**:
+```javascript
+// Update contact information and move to next stage
+const updates = {
+  phone: '(512) 555-9999',
+  email: 'newemail@example.com',
+  status: 'Site Visit Scheduled',
+  consultationDate: '2024-03-20'
+};
+
+const response = await fetch(`http://localhost:3000/api/projects/${recordId}`, {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(updates)
+});
+
+const updated = await response.json();
+```
+
+---
+
+### 6. Add New Season
 
 Adds a new season option to Airtable. This uses a workaround that creates and immediately deletes a dummy record.
 
@@ -640,6 +778,14 @@ curl -X POST http://localhost:3000/api/projects \
     "siteNumber": 1
   }'
 
+# Update an existing project
+curl -X PATCH http://localhost:3000/api/projects/recXXXXXXXXXXXXXX \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "Consultation Scheduled",
+    "consultationDate": "2024-03-15"
+  }'
+
 # Add a new season
 curl -X POST http://localhost:3000/api/seasons \
   -H "Content-Type: application/json" \
@@ -768,6 +914,15 @@ class MagicTreeHouseAPI {
   async createProject(projectData) {
     return this.request('/projects', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(projectData)
+    });
+  }
+
+  // PATCH /api/projects/:recordId
+  async updateProject(recordId, projectData) {
+    return this.request(`/projects/${recordId}`, {
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(projectData)
     });

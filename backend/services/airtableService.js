@@ -373,6 +373,60 @@ const addProject = async (projectData) => {
 };
 
 
+// --- Update Project ---
+const updateProject = async (recordId, projectData) => {
+    try {
+        // 1. Map incoming API data to Airtable field names/IDs
+        const airtableRecordData = {};
+        for (const apiKey in projectData) {
+            const airtableField = FIELD_MAP.apiToAirtable[apiKey];
+            if (airtableField) {
+                airtableRecordData[airtableField] = projectData[apiKey];
+            } else if (apiKey === 'season') { // Handle season specifically if not directly mapped
+                airtableRecordData[FIELD_MAP.apiToAirtable.season || 'Season'] = projectData.season;
+            }
+        }
+
+        // Basic validation - ensure we're not updating critical fields that shouldn't change
+        if (Object.keys(airtableRecordData).length === 0) {
+            throw new Error("No valid fields provided to update.");
+        }
+
+        console.log(`Updating Airtable record ${recordId} with data:`, airtableRecordData);
+
+        // 2. Use the Airtable client to update the record
+        const updatedRecords = await table.update([
+            {
+                id: recordId,
+                fields: airtableRecordData
+            }
+        ], { typecast: true });
+
+        if (!updatedRecords || updatedRecords.length === 0) {
+            throw new Error('Record update failed, no record returned.');
+        }
+
+        console.log(`Successfully updated record ID: ${updatedRecords[0].id}`);
+        // 3. Return the updated record (processed)
+        return processRecord(updatedRecords[0]);
+
+    } catch (error) {
+        console.error(`Error updating project ${recordId}:`, error);
+        const errMsg = error.message || 'Failed to update project.';
+        if (errMsg.includes('UNKNOWN_FIELD_NAME')) {
+            throw new Error(`Failed to update project: Invalid field name provided. Check FIELD_MAP. ${errMsg}`);
+        }
+        if (errMsg.includes('INVALID_VALUE_FOR_COLUMN')) {
+            throw new Error(`Failed to update project: Invalid value for a field. ${errMsg}`);
+        }
+        if (errMsg.includes('NOT_FOUND')) {
+            throw new Error(`Failed to update project: Record not found. ${errMsg}`);
+        }
+        throw new Error(`Failed to update project: ${errMsg}`);
+    }
+};
+
+
 // --- Exports ---
 module.exports = {
     getAllSeasons,
@@ -380,4 +434,5 @@ module.exports = {
     getProjectDetails,
     addSeasonOption, // Export the new workaround function
     addProject,
+    updateProject,
 };

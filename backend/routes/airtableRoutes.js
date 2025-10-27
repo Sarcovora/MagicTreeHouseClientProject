@@ -23,5 +23,9 @@ router.get('/projects/details/:recordId', airtableController.handleGetProjectDet
 // Corresponds to: AddNewProject(...)
 router.post('/projects', airtableController.handleAddProject);
 
+// PATCH an existing project (updates a record in Airtable by its Record ID)
+// Corresponds to: UpdateProject(recordId, projectData)
+router.patch('/projects/:recordId', airtableController.handleUpdateProject);
+
 
 module.exports = router;

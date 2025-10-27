@@ -1,6 +1,73 @@
 # Changelog - Magic Tree House API
 
-## [Latest] - 2025-10-14
+## [Latest] - 2025-10-27
+
+### Added
+
+- ✨ **Update Project Endpoint**
+  - Added `PATCH /api/projects/:recordId` endpoint for updating existing projects
+  - Supports partial updates - only send the fields you want to change
+  - All project fields can be updated except file attachments
+  - Proper error handling for missing records (404) and validation errors (400)
+
+### Backend Changes
+
+**New Service Function** (`backend/services/airtableService.js`):
+
+- Added `updateProject(recordId, projectData)` function (lines 376-427)
+- Maps API field names to Airtable field names using existing `FIELD_MAP`
+- Uses Airtable's `table.update()` method with typecast enabled
+- Returns processed record with all fields after update
+
+**New Controller** (`backend/controllers/airtableController.js`):
+
+- Added `handleUpdateProject` controller (lines 90-112)
+- Validates recordId and projectData presence
+- Handles 404 errors for missing projects
+- Returns updated project data on success
+
+**New Route** (`backend/routes/airtableRoutes.js`):
+
+- Added `PATCH /projects/:recordId` route (line 28)
+- Connects to `handleUpdateProject` controller
+
+### Documentation Updates
+
+- Updated `documentation/API_DOCUMENTATION.md` with full PATCH endpoint documentation
+- Added update examples in cURL commands section
+- Added `updateProject()` method to API service class example
+- Updated table of contents
+
+### Testing
+
+- Tested with record `recSxNW2UhgirhCXU`
+- Verified partial updates work correctly
+- Confirmed updates persist to Airtable
+
+### API Usage Example
+
+```javascript
+// Update project status and consultation date
+const response = await fetch(`http://localhost:3000/api/projects/${recordId}`, {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    status: 'Consultation Scheduled',
+    consultationDate: '2024-03-15'
+  })
+});
+```
+
+### Migration Notes
+
+- ✅ No breaking changes
+- ✅ Backward compatible
+- ✅ Existing endpoints continue to work
+- ✅ New endpoint is optional to use
+
+---
+
+## [2025-10-14]
 
 ### Added
 - ✨ **Property Images Field Support**
