@@ -87,10 +87,35 @@ const handleAddProject = asyncHandler(async (req, res) => {
     res.status(201).json(newProject); // Respond with the newly created project data
 });
 
+const handleUpdateProject = asyncHandler(async (req, res) => {
+    const { recordId } = req.params;
+    const projectData = req.body;
+
+    // Basic validation
+    if (!recordId) {
+        return res.status(400).json({ message: 'Record ID parameter is required.' });
+    }
+    if (!projectData || typeof projectData !== 'object' || Object.keys(projectData).length === 0) {
+        return res.status(400).json({ message: 'Project data is required in the request body.' });
+    }
+
+    try {
+        const updatedProject = await airtableService.updateProject(recordId, projectData);
+        res.json(updatedProject); // Respond with the updated project data
+    } catch (error) {
+        // Catch specific 'Project not found' error from service
+        if (error.message.includes('Record not found')) {
+            return res.status(404).json({ message: 'Project not found.' });
+        }
+        throw error; // Re-throw other errors to be handled by asyncHandler
+    }
+});
+
 module.exports = {
     handleGetAllSeasons,
     handleGetProjectsBySeason,
     handleGetProjectDetails,
     handleAddSeason,
     handleAddProject,
+    handleUpdateProject,
 };

@@ -166,6 +166,66 @@ console.log('Unique ID:', newProject.uniqueId); // "Doe PID12345 Site 1"
 
 **Returns**: `Project` - The newly created project
 
+### Update an Existing Project
+
+```javascript
+// Update specific fields of a project (partial update)
+const updatedProject = await api.projects.update('rec1dp7COcr1qPsmj', {
+  status: 'Consultation Scheduled',
+  consultationDate: '2024-03-15',
+  phone: '(512) 555-9999'
+});
+
+console.log('Updated project:', updatedProject.id);
+console.log('New status:', updatedProject.status);
+```
+
+**Parameters**:
+
+- `recordId` (string, required) - The Airtable record ID
+- `projectData` (object, required) - Object containing fields to update
+
+**Updatable Fields** (all optional - send only what you want to change):
+
+- `season` - Change project season
+- `ownerFirstName` - Update owner first name
+- `ownerLastName` - Update owner last name
+- `address` - Update property address
+- `city` - Update city
+- `zipCode` - Update ZIP code
+- `county` - Update county
+- `propertyId` - Update property ID
+- `siteNumber` - Update site number
+- `phone` - Update phone number
+- `email` - Update email
+- `status` - Update project status
+- `landRegion` - Update land region
+- `participationStatus` - Update participation status
+- `contactDate` - Update contact date
+- `consultationDate` - Update consultation date
+- `applicationDate` - Update application date
+- `flaggingDate` - Update flagging date
+- `plantingDate` - Update planting date
+
+**Returns**: `Project` - The complete updated project
+
+**Notes**:
+
+- This is a **partial update** - you only need to send the fields you want to change
+- All other fields remain unchanged
+- The response contains the complete project with all fields after the update
+- File attachments (maps, photos) cannot be updated via the API
+
+**Example - Update Multiple Fields**:
+```javascript
+// Move project to next stage and update contact info
+const updated = await api.projects.update('rec1dp7COcr1qPsmj', {
+  status: 'Site Visit Complete',
+  flaggingDate: '2024-04-15',
+  email: 'newemail@example.com'
+});
+```
+
 ### Utility Functions
 
 ```javascript
@@ -375,6 +435,7 @@ function CreateProjectForm() {
 ```
 
 **Returns**:
+
 - `createProject` - Function to create a project (takes project data object)
 - `loading` - Boolean
 - `error` - Error message string (or null)
@@ -420,10 +481,136 @@ function AddSeasonForm() {
 ```
 
 **Returns**:
+
 - `addSeason` - Function to add a season (takes season name string)
 - `loading` - Boolean
 - `error` - Error message string (or null)
 - `success` - Boolean indicating success
+
+### useUpdateProject()
+
+Update an existing project with form state management.
+
+```javascript
+import { useUpdateProject } from './hooks/useMagicTreeHouse';
+import { useState } from 'react';
+
+function UpdateProjectForm({ projectId, currentProject }) {
+  const { updateProject, loading, error, success, updatedProject } = useUpdateProject();
+
+  const [formData, setFormData] = useState({
+    status: currentProject.status || '',
+    phone: currentProject.phone || '',
+    email: currentProject.email || '',
+    consultationDate: currentProject.consultationDate || '',
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Only send changed fields
+    const updates = {};
+    if (formData.status !== currentProject.status) updates.status = formData.status;
+    if (formData.phone !== currentProject.phone) updates.phone = formData.phone;
+    if (formData.email !== currentProject.email) updates.email = formData.email;
+    if (formData.consultationDate !== currentProject.consultationDate) {
+      updates.consultationDate = formData.consultationDate;
+    }
+
+    const result = await updateProject(projectId, updates);
+
+    if (result) {
+      console.log('Project updated successfully!', result.id);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <label>Status</label>
+        <select
+          value={formData.status}
+          onChange={e => setFormData({...formData, status: e.target.value})}
+        >
+          <option value="Initial Contact (call/email)">Initial Contact</option>
+          <option value="Consultation Scheduled">Consultation Scheduled</option>
+          <option value="Site Visit Complete">Site Visit Complete</option>
+          <option value="Planting complete">Planting Complete</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Phone</label>
+        <input
+          type="tel"
+          value={formData.phone}
+          onChange={e => setFormData({...formData, phone: e.target.value})}
+        />
+      </div>
+
+      <div>
+        <label>Email</label>
+        <input
+          type="email"
+          value={formData.email}
+          onChange={e => setFormData({...formData, email: e.target.value})}
+        />
+      </div>
+
+      <div>
+        <label>Consultation Date</label>
+        <input
+          type="date"
+          value={formData.consultationDate}
+          onChange={e => setFormData({...formData, consultationDate: e.target.value})}
+        />
+      </div>
+
+      <button type="submit" disabled={loading}>
+        {loading ? 'Updating...' : 'Update Project'}
+      </button>
+
+      {success && <div className="success">Project updated successfully!</div>}
+      {error && <div className="error">Error: {error}</div>}
+    </form>
+  );
+}
+```
+
+**Parameters**:
+
+- Takes no parameters on initialization
+
+**Returns**:
+
+- `updateProject` - Function to update a project (takes recordId and updates object)
+- `loading` - Boolean
+- `error` - Error message string (or null)
+- `success` - Boolean indicating success
+- `updatedProject` - The updated project object (or null)
+
+**Quick Update Example**:
+
+```javascript
+import { useUpdateProject } from './hooks/useMagicTreeHouse';
+
+function QuickStatusUpdate({ project }) {
+  const { updateProject, loading } = useUpdateProject();
+
+  const moveToNextStage = async () => {
+    await updateProject(project.id, {
+      status: 'Consultation Scheduled',
+      consultationDate: new Date().toISOString().split('T')[0]
+    });
+  };
+
+  return (
+    <button onClick={moveToNextStage} disabled={loading}>
+      {loading ? 'Updating...' : 'Schedule Consultation'}
+    </button>
+  );
+}
+```
 
 ### useSeasonsAndProjects()
 
@@ -479,9 +666,11 @@ function ProjectsPage() {
 ```
 
 **Parameters**:
+
 - `initialSeason` (string, optional) - Season to load initially
 
 **Returns**:
+
 - `seasons` - Array of all seasons
 - `selectedSeason` - Currently selected season
 - `setSelectedSeason` - Function to change selected season
@@ -826,6 +1015,200 @@ function CreateProjectPage() {
 }
 ```
 
+### Example 4: Edit Project Page with Inline Updates
+
+```javascript
+import { useProject, useUpdateProject } from './hooks/useMagicTreeHouse';
+import { useParams } from 'react-router-dom';
+import { useState } from 'react';
+
+function EditProjectPage() {
+  const { recordId } = useParams();
+  const { project, loading: loadingProject, error: loadError, refresh } = useProject(recordId);
+  const { updateProject, loading: updating, error: updateError, success } = useUpdateProject();
+
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState({});
+
+  // Initialize form when project loads
+  React.useEffect(() => {
+    if (project) {
+      setFormData({
+        status: project.status || '',
+        phone: project.phone || '',
+        email: project.email || '',
+        city: project.city || '',
+        consultationDate: project.consultationDate || '',
+        flaggingDate: project.flaggingDate || '',
+        plantingDate: project.plantingDate || '',
+      });
+    }
+  }, [project]);
+
+  const handleSave = async () => {
+    // Build updates object with only changed fields
+    const updates = {};
+    if (formData.status !== project.status) updates.status = formData.status;
+    if (formData.phone !== project.phone) updates.phone = formData.phone;
+    if (formData.email !== project.email) updates.email = formData.email;
+    if (formData.city !== project.city) updates.city = formData.city;
+    if (formData.consultationDate !== project.consultationDate) {
+      updates.consultationDate = formData.consultationDate;
+    }
+    if (formData.flaggingDate !== project.flaggingDate) {
+      updates.flaggingDate = formData.flaggingDate;
+    }
+    if (formData.plantingDate !== project.plantingDate) {
+      updates.plantingDate = formData.plantingDate;
+    }
+
+    const result = await updateProject(recordId, updates);
+
+    if (result) {
+      setEditMode(false);
+      refresh(); // Refresh project data
+    }
+  };
+
+  if (loadingProject) return <div>Loading project...</div>;
+  if (loadError) return <div>Error: {loadError}</div>;
+  if (!project) return <div>Project not found</div>;
+
+  return (
+    <div className="edit-project">
+      <div className="header">
+        <h1>Edit Project: {project.ownerFullName}</h1>
+        {!editMode && (
+          <button onClick={() => setEditMode(true)}>Edit</button>
+        )}
+      </div>
+
+      {editMode ? (
+        // Edit Mode
+        <div className="edit-form">
+          <h2>Project Details</h2>
+
+          <div className="form-group">
+            <label>Status</label>
+            <select
+              value={formData.status}
+              onChange={e => setFormData({...formData, status: e.target.value})}
+            >
+              <option value="">Select status</option>
+              <option value="Initial Contact (call/email)">Initial Contact</option>
+              <option value="Consultation Scheduled">Consultation Scheduled</option>
+              <option value="Site Visit Complete">Site Visit Complete</option>
+              <option value="Flagging Complete">Flagging Complete</option>
+              <option value="Planting complete">Planting Complete</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>City</label>
+            <input
+              value={formData.city}
+              onChange={e => setFormData({...formData, city: e.target.value})}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Phone</label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={e => setFormData({...formData, phone: e.target.value})}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={e => setFormData({...formData, email: e.target.value})}
+            />
+          </div>
+
+          <h3>Important Dates</h3>
+
+          <div className="form-group">
+            <label>Consultation Date</label>
+            <input
+              type="date"
+              value={formData.consultationDate}
+              onChange={e => setFormData({...formData, consultationDate: e.target.value})}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Flagging Date</label>
+            <input
+              type="date"
+              value={formData.flaggingDate}
+              onChange={e => setFormData({...formData, flaggingDate: e.target.value})}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Planting Date</label>
+            <input
+              type="date"
+              value={formData.plantingDate}
+              onChange={e => setFormData({...formData, plantingDate: e.target.value})}
+            />
+          </div>
+
+          <div className="form-actions">
+            <button onClick={handleSave} disabled={updating}>
+              {updating ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button onClick={() => setEditMode(false)}>Cancel</button>
+          </div>
+
+          {success && <div className="success">Changes saved successfully!</div>}
+          {updateError && <div className="error">Error: {updateError}</div>}
+        </div>
+      ) : (
+        // View Mode
+        <div className="project-view">
+          <section>
+            <h2>Property Information</h2>
+            <p><strong>Address:</strong> {project.address}</p>
+            <p><strong>City:</strong> {project.city}</p>
+            <p><strong>County:</strong> {project.county}</p>
+          </section>
+
+          <section>
+            <h2>Contact Information</h2>
+            <p><strong>Phone:</strong> {project.phone}</p>
+            <p><strong>Email:</strong> {project.email}</p>
+          </section>
+
+          <section>
+            <h2>Project Status</h2>
+            <p><strong>Current Status:</strong> {project.status}</p>
+            <p><strong>Season:</strong> {project.season}</p>
+          </section>
+
+          <section>
+            <h2>Important Dates</h2>
+            {project.consultationDate && (
+              <p><strong>Consultation:</strong> {new Date(project.consultationDate).toLocaleDateString()}</p>
+            )}
+            {project.flaggingDate && (
+              <p><strong>Flagging:</strong> {new Date(project.flaggingDate).toLocaleDateString()}</p>
+            )}
+            {project.plantingDate && (
+              <p><strong>Planting:</strong> {new Date(project.plantingDate).toLocaleDateString()}</p>
+            )}
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
 ---
 
 ## Error Handling
@@ -1165,6 +1548,7 @@ If you see CORS errors in the console, make sure:
 ## Summary
 
 **Vanilla JS:**
+
 ```javascript
 import api from './services/magicTreeHouseAPI';
 
@@ -1172,16 +1556,25 @@ const seasons = await api.seasons.getAll();
 const projects = await api.projects.getBySeason('24-25');
 const project = await api.projects.getById('rec123...');
 await api.projects.create({ season: '24-25', ... });
+await api.projects.update('rec123...', { status: 'New Status', phone: '555-1234' });
 ```
 
 **React Hooks:**
+
 ```javascript
-import { useSeasons, useProjects, useProject, useCreateProject } from './hooks/useMagicTreeHouse';
+import {
+  useSeasons,
+  useProjects,
+  useProject,
+  useCreateProject,
+  useUpdateProject
+} from './hooks/useMagicTreeHouse';
 
 const { seasons, loading, error } = useSeasons();
 const { projects } = useProjects('24-25');
 const { project } = useProject('rec123...');
 const { createProject } = useCreateProject();
+const { updateProject } = useUpdateProject();
 ```
 
 **That's it!** You now have everything you need to interact with the Magic Tree House backend. Happy coding! 🌳
