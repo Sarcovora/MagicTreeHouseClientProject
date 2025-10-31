@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Mail, Phone, Download, Eye } from "lucide-react";
 import { Document, Page } from "react-pdf";
 import UserAvatar from "../../../components/common/UserAvatar";
-import "../../../pdfWorker"; // Import the PDF worker configuration
+import "../../../pdfWorker";
 
 const FormDetail = () => {
   const { id } = useParams();
@@ -17,7 +17,6 @@ const FormDetail = () => {
   }
 
   useEffect(() => {
-    // Mock data - replace with API call
     const mockForm = {
       id: "1",
       title: "Carbon Credit Form",
@@ -74,29 +73,27 @@ const FormDetail = () => {
     setLoading(false);
   }, [id]);
 
-  const renderNavigation = () => {
-    return (
-      <div className="flex justify-between items-center mt-4">
-        <button
-          disabled={pageNumber <= 1}
-          onClick={() => setPageNumber(pageNumber - 1)}
-          className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
-        >
-          Previous
-        </button>
-        <p className="text-sm text-gray-600">
-          Page {pageNumber} of {numPages}
-        </p>
-        <button
-          disabled={pageNumber >= numPages}
-          onClick={() => setPageNumber(pageNumber + 1)}
-          className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div>
-    );
-  };
+  const renderNavigation = () => (
+    <div className="flex justify-between items-center mt-4">
+      <button
+        disabled={pageNumber <= 1}
+        onClick={() => setPageNumber(pageNumber - 1)}
+        className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
+      >
+        Previous
+      </button>
+      <p className="text-sm text-gray-600">
+        Page {pageNumber} of {numPages}
+      </p>
+      <button
+        disabled={pageNumber >= numPages}
+        onClick={() => setPageNumber(pageNumber + 1)}
+        className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
+      >
+        Next
+      </button>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -109,7 +106,6 @@ const FormDetail = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
         <div className="mb-8">
           <Link
             to="/admin/forms"
@@ -145,7 +141,6 @@ const FormDetail = () => {
           </div>
         </div>
 
-        {/* PDF Viewer Section */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold">Document Preview</h2>
@@ -171,8 +166,8 @@ const FormDetail = () => {
                   </div>
                 }
               >
-                <Page 
-                  pageNumber={pageNumber} 
+                <Page
+                  pageNumber={pageNumber}
                   renderTextLayer={false}
                   renderAnnotationLayer={false}
                   scale={1.0}
@@ -184,7 +179,6 @@ const FormDetail = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
               <h2 className="text-xl font-semibold mb-4">Submission History</h2>
@@ -206,7 +200,6 @@ const FormDetail = () => {
               </div>
             </div>
 
-            {/* Document Details Section */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-xl font-semibold mb-4">Document Details</h2>
               <div className="space-y-4">
@@ -223,7 +216,6 @@ const FormDetail = () => {
             </div>
           </div>
 
-          {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-xl font-semibold mb-4">Associated Members</h2>

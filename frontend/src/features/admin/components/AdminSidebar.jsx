@@ -2,7 +2,6 @@
 import React from 'react'; // Sidebar renders nav icons that rely on React.cloneElement
 import {
   TreePine,
-  Files,
   FormInput,
   Bell,
   Map,
@@ -41,7 +40,6 @@ const AdminSidebar = () => {
 
   const menuItems = [
     { icon: <TreePine size={20} />, label: "Dashboard", path: "/admin/dashboard" },
-    { icon: <Files size={20} />, label: "Documents", path: "/admin/documents" },
     { icon: <FormInput size={20} />, label: "Forms", path: "/admin/forms" },
     { icon: <Bell size={20} />, label: "Notifications", path: "/admin/notifications" },
     { icon: <Map size={20} />, label: "Map", path: "/admin/map" },

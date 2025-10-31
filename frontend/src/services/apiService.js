@@ -577,118 +577,6 @@ export const deleteSeason = async (seasonId) => {
 };
 
 
-  export const getDocuments = async (filters = {}) => {
-      await simulateDelay();
-      let results = [...mockDocuments]; // Return a copy
-      if (filters.category && filters.category !== 'All Documents') {
-          results = results.filter(doc => doc.category === filters.category);
-      }
-      if (filters.searchTerm) {
-          const term = filters.searchTerm.toLowerCase();
-          results = results.filter(doc =>
-              doc.title?.toLowerCase().includes(term) ||
-              doc.description?.toLowerCase().includes(term) ||
-              doc.fileName?.toLowerCase().includes(term) ||
-              doc.landowner?.toLowerCase().includes(term)
-          );
-      }
-      // Separate maps and photos from general documents if needed, or use category filtering
-      console.log("API Call: getDocuments -> Returning:", results);
-      return results;
-  };
-  
-  export const getDocumentDetails = async (documentId) => {
-      await simulateDelay();
-      const document = mockDocuments.find(doc => doc.id === documentId);
-       // Add mock collaborators here or fetch separately
-       const mockCollaborators = [
-          { id: 1, name: "Jane Doe", role: "Landowner", email: "jane@example.com", phone: "123-456-7890", avatar: null },
-          { id: 2, name: "John Smith", role: "Project Manager", email: "john@example.com", phone: "123-456-7891", avatar: null },
-      ];
-      console.log(`API Call: getDocumentDetails(${documentId}) -> Returning:`, document);
-      return document ? { ...document, collaborators: mockCollaborators } : null; // Return a copy or null
-  };
-  
-  // Mock file upload - in reality, this would send the file to the backend
-  export const addDocument = async (file, metadata) => {
-      await simulateDelay(1000); // Simulate longer delay for upload
-      const newDocument = {
-          id: `doc${Date.now()}`, // simple unique ID
-          ...metadata,
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-          // In a real scenario, the backend would return the actual storage URL
-          // For mock, we'll use a placeholder or maybe a blob URL if needed for immediate preview,
-          // but blob URLs are temporary and harder to manage state-wise.
-          // Let's use a generic placeholder for now. If it's an image/pdf we have, use that path.
-          fileUrl: metadata.category === 'Property Maps' ? '/images/property-maps/nicehouse.jpeg' : (file.type.startsWith('image/') ? '/images/project-images/abcd_park.jpg' : '/pdfs/carbonCreditForm.pdf'),
-          uploadDate: new Date(),
-          localFilePath: `documents/${metadata.category}/${Date.now()}_${file.name}` // Simulate path
-      };
-      mockDocuments.push(newDocument);
-      console.log("API Call: addDocument -> New Document:", newDocument);
-      return { ...newDocument };
-  };
-  
-  export const deleteDocument = async (documentId) => {
-      await simulateDelay();
-      const initialLength = mockDocuments.length;
-      mockDocuments = mockDocuments.filter(doc => doc.id !== documentId);
-      const success = mockDocuments.length < initialLength;
-      console.log(`API Call: deleteDocument(${documentId}) -> Success: ${success}`);
-      return { success };
-  };
-  
-  export const getMaps = async () => {
-      await simulateDelay();
-      const maps = mockDocuments.filter(doc => doc.category === 'Property Maps');
-      console.log("API Call: getMaps -> Returning:", maps);
-      return [...maps];
-  };
-  
-  export const getMapComments = async (mapId) => {
-      await simulateDelay(200);
-      const comments = mockMapComments[mapId] || [];
-      console.log(`API Call: getMapComments(${mapId}) -> Returning:`, comments);
-      return [...comments];
-  };
-  
-  export const addMapComment = async (mapId, commentData) => {
-      await simulateDelay();
-      const newComment = {
-          id: `c${Date.now()}`,
-          mapId: mapId,
-          ...commentData, // should include x, y, text, author
-          timestamp: new Date()
-      };
-      if (!mockMapComments[mapId]) {
-          mockMapComments[mapId] = [];
-      }
-      mockMapComments[mapId].push(newComment);
-      console.log(`API Call: addMapComment(${mapId}) -> New Comment:`, newComment);
-      return { ...newComment };
-  };
-  
-  
-  export const getPhotos = async () => {
-      await simulateDelay();
-      // Assuming photos are documents with image types NOT in 'Property Maps'
-      const photos = mockDocuments.filter(doc => doc.fileType?.startsWith('image/') && doc.category !== 'Property Maps');
-       console.log("API Call: getPhotos -> Returning:", photos);
-      return [...photos];
-  };
-  
-  // addPhoto can likely just reuse addDocument, ensuring category is set correctly (e.g., 'Photos')
-  export const addPhoto = async (file, metadata) => {
-      return addDocument(file, { ...metadata, category: 'Photos' });
-  };
-  
-  // deletePhoto can likely just reuse deleteDocument
-  export const deletePhoto = async (photoId) => {
-      return deleteDocument(photoId);
-  };
-  
   export const getFormDetails = async (formId) => {
       await simulateDelay();
        // Find the form based on id - using a mock form for now
@@ -727,7 +615,7 @@ export const deleteSeason = async (seasonId) => {
   
   
   // Export all functions
-  const apiService = {
+const apiService = {
     getSeasons,
     getAllProjects,
     getProjectsBySeason,
@@ -737,17 +625,7 @@ export const deleteSeason = async (seasonId) => {
     updateProject,
     deleteProject,
     deleteSeason, // Add deleteSeason here
-    getDocuments,
-    getDocumentDetails,
-    addDocument,
-    deleteDocument,
-    getMaps,
-    getMapComments,
-    addMapComment,
-    getPhotos,
-    addPhoto,
-    deletePhoto,
-    getFormDetails,
+  getFormDetails,
     getUserProfile,
   };
   

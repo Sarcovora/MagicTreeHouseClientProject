@@ -6,9 +6,6 @@ import AdminLayout from "./features/admin/layouts/AdminLayout";
 import Notifications from "./features/admin/pages/Notifications"; // Import the new component
 import ProjectDetail from "./features/admin/pages/ProjectDetail";
 import SeasonProjectList from "./features/admin/pages/SeasonProjectList";
-import Documents from "./pages/Documents";
-import DocumentUpload from "./pages/DocumentUpload";
-import DocumentDetail from "./pages/DocumentDetail"; // Assuming this is the correct path
 import Map from "./pages/Map";
 import PhotoGallery from "./pages/PhotoGallery";
 import Forms from "./pages/Forms";
@@ -39,9 +36,6 @@ function App() {
           <Route path="project/:id/edit" element={<EditProject />} />
           {/* --- END ADD ROUTE --- */}
           <Route path="add-project" element={<AddProject />} />
-          <Route path="documents" element={<Documents />} />
-          <Route path="documents/upload" element={<DocumentUpload />} />
-          <Route path="documents/:id" element={<DocumentDetail />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="map" element={<Map />} />
           <Route path="gallery" element={<PhotoGallery />} />
@@ -56,9 +50,6 @@ function App() {
            <Route path="dashboard" element={<LandownerDashboard />} />
             {/* Add placeholder for landowner notifications if sidebar links there */}
             {/* <Route path="notifications" element={<LandownerNotifications />} /> */}
-           <Route path="documents" element={<Documents />} />
-           <Route path="documents/upload" element={<DocumentUpload />} />
-           <Route path="documents/:id" element={<DocumentDetail />} />
            <Route path="map" element={<Map />} />
            <Route path="gallery" element={<PhotoGallery />} />
            <Route path="forms" element={<Forms />} />

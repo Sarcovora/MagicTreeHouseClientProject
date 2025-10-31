@@ -3,7 +3,7 @@ import { Plus, Search, Filter, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Forms = () => {
-  // Sample forms data (replace with actual API calls later)
+  // TODO: replace mock data with real API call when backend is ready
   const [forms, setForms] = useState([
     {
       id: 1,
@@ -30,7 +30,6 @@ const Forms = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Filter forms based on search term
   const filteredForms = forms.filter(
     (form) =>
       form.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -43,7 +42,6 @@ const Forms = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
             <h1 className="text-2xl font-bold mb-4 md:mb-0">Forms</h1>
-
             <Link
               to="/admin/forms/create"
               className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -53,7 +51,6 @@ const Forms = () => {
             </Link>
           </div>
 
-          {/* Search */}
           <div className="mb-8">
             <div className="relative">
               <Search
@@ -70,7 +67,6 @@ const Forms = () => {
             </div>
           </div>
 
-          {/* Forms grid */}
           {loading ? (
             <div className="flex justify-center py-10">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
