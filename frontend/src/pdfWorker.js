@@ -1,4 +1,5 @@
 import { pdfjs } from 'react-pdf';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker?url';
 
-// Configure the PDF.js worker so react-pdf can render documents in the browser.
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Use a locally-bundled worker to avoid CORS issues during development.
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
