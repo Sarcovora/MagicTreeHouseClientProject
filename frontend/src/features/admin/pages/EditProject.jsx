@@ -1,8 +1,8 @@
-// src/pages/admin/EditProject.jsx
+// src/features/admin/pages/EditProject.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
-import apiService from '../../services/apiService';
+import apiService from '../../../services/apiService';
 
 const EditProject = () => {
   const { id: projectId } = useParams();

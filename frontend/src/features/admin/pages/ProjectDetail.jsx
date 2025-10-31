@@ -1,10 +1,10 @@
-// src/pages/admin/ProjectDetail.jsx
+// src/features/admin/pages/ProjectDetail.jsx
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   User, MapPin, Phone, Mail, ArrowLeft, Edit, Trash2, AlertCircle
 } from "lucide-react";
-import apiService from "../../services/apiService";
+import apiService from "../../../services/apiService";
 
 const ProjectDetail = () => {
   const navigate = useNavigate();

@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import Sidebar from "../../components/layouts/LandownerSidebar";
+import Sidebar from "../components/LandownerSidebar"; // Landowner-specific sidebar
 
 const LandownerLayout = () => {
   return (

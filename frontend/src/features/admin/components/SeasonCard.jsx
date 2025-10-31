@@ -1,8 +1,8 @@
-// src/components/SeasonCard.jsx
+// src/features/admin/components/SeasonCard.jsx
 import React from 'react'; // Import React
 import { Link } from 'react-router-dom';
 import { Trash2 } from 'lucide-react'; // Import Trash icon
-import Folder from "../assets/icons/folder.svg?react";
+import Folder from "../../../assets/icons/folder.svg?react";
 
 // Add onDelete prop
 const SeasonCard = ({ season, onDelete }) => {

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Mail, Phone, Download, Eye } from "lucide-react";
 import { Document, Page } from "react-pdf";
-import UserAvatar from "../../components/common/UserAvatar";
-import "../../pdfWorker"; // Import the PDF worker configuration
+import UserAvatar from "../../../components/common/UserAvatar";
+import "../../../pdfWorker"; // Import the PDF worker configuration
 
 const FormDetail = () => {
   const { id } = useParams();

@@ -13,7 +13,7 @@ import {
   Image,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import TreeFolks from "../../assets/icons/treefolks.svg?react";
+import TreeFolks from "../../../assets/icons/treefolks.svg?react";
 
 const LandownerSidebar = () => {
   const location = useLocation();

@@ -1,22 +1,22 @@
 // src/App.jsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, Link } from "react-router-dom";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminLayout from "./pages/admin/AdminLayout";
-import Notifications from "./pages/admin/Notifications"; // Import the new component
-import ProjectDetail from "./pages/admin/ProjectDetail";
-import SeasonProjectList from "./pages/admin/SeasonProjectList";
+import AdminDashboard from "./features/admin/pages/AdminDashboard";
+import AdminLayout from "./features/admin/layouts/AdminLayout";
+import Notifications from "./features/admin/pages/Notifications"; // Import the new component
+import ProjectDetail from "./features/admin/pages/ProjectDetail";
+import SeasonProjectList from "./features/admin/pages/SeasonProjectList";
 import Documents from "./pages/Documents";
 import DocumentUpload from "./pages/DocumentUpload";
 import DocumentDetail from "./pages/DocumentDetail"; // Assuming this is the correct path
 import Map from "./pages/Map";
 import PhotoGallery from "./pages/PhotoGallery";
 import Forms from "./pages/Forms";
-import FormDetail from "./pages/admin/FormDetail";
-import LandownerLayout from "./pages/landowner/LandownerLayout";
-import LandownerDashboard from "./pages/landowner/LandownerDashboard";
-import AddProject from "./pages/admin/AddProject"; 
-import EditProject from './pages/admin/EditProject';
+import FormDetail from "./features/admin/pages/FormDetail";
+import LandownerLayout from "./features/landowner/layouts/LandownerLayout";
+import LandownerDashboard from "./features/landowner/pages/LandownerDashboard";
+import AddProject from "./features/admin/pages/AddProject"; 
+import EditProject from './features/admin/pages/EditProject';
 
 // Temporary auth simulation
 const isAdmin = true;

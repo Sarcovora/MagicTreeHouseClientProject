@@ -1,8 +1,8 @@
-// src/pages/admin/AddProject.jsx
+// src/features/admin/pages/AddProject.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft, Plus, AlertCircle } from 'lucide-react';
-import apiService from '../../services/apiService';
+import apiService from '../../../services/apiService';
 
 // Helper hook to parse query parameters
 function useQuery() {

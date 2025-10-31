@@ -1,15 +1,15 @@
-// src/pages/admin/AdminDashboard.jsx
+// src/features/admin/pages/AdminDashboard.jsx
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import AddNewFolderIcon from "../../assets/icons/addNewFolder.svg?react";
-import AddNewProjectIcon from "../../assets/icons/addNewProject.svg?react";
+import AddNewFolderIcon from "../../../assets/icons/addNewFolder.svg?react";
+import AddNewProjectIcon from "../../../assets/icons/addNewProject.svg?react";
 
-import ProjectCard from "../../components/projects/ProjectCard";
-import SeasonCard from "../../components/SeasonCard";
-import SearchBar from "../../components/SearchBar";
-import Modal from "../../components/common/Modal";
-import AddSeasonForm from "../../components/modals/AddSeasonForm";
-import apiService from "../../services/apiService";
+import ProjectCard from "../components/ProjectCard";
+import SeasonCard from "../components/SeasonCard";
+import SearchBar from "../../../components/ui/SearchBar";
+import Modal from "../../../components/common/Modal";
+import AddSeasonForm from "../components/AddSeasonForm";
+import apiService from "../../../services/apiService";
 import { AlertCircle } from "lucide-react";
 
 const AdminDashboard = () => {

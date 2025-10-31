@@ -1,6 +1,6 @@
-// src/pages/admin/AdminLayout.jsx
+// src/features/admin/layouts/AdminLayout.jsx
 import { Outlet } from "react-router-dom";
-import Sidebar from "../../components/layouts/AdminSidebar"; // Ensure path is correct
+import Sidebar from "../components/AdminSidebar"; // Admin-specific navigation sidebar
 
 const AdminLayout = () => {
   return (

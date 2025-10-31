@@ -1,10 +1,10 @@
-// src/pages/admin/SeasonProjectList.jsx
+// src/features/admin/pages/SeasonProjectList.jsx
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom'; // Ensure Link is imported
 import { ArrowLeft, FolderOpen, Plus, AlertCircle } from 'lucide-react';
-import apiService from '../../services/apiService';
-import ProjectCard from '../../components/projects/ProjectCard';
-import SearchBar from '../../components/SearchBar';
+import apiService from '../../../services/apiService';
+import ProjectCard from '../components/ProjectCard';
+import SearchBar from '../../../components/ui/SearchBar';
 
 const SeasonProjectList = () => {
   const { seasonYear } = useParams();

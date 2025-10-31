@@ -1,5 +1,5 @@
-// src/components/layouts/AdminSidebar.jsx
-import React from 'react'; // <--- ADD THIS LINE
+// src/features/admin/components/AdminSidebar.jsx
+import React from 'react'; // Sidebar renders nav icons that rely on React.cloneElement
 import {
   TreePine,
   Files,
@@ -12,10 +12,10 @@ import {
   Image,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import TreeFolks from "../../assets/icons/treefolks.svg?react";
+import TreeFolks from "../../../assets/icons/treefolks.svg?react";
 import { useState, useEffect } from 'react';
-import apiService from '../../services/apiService';
-import UserAvatar from '../common/UserAvatar';
+import apiService from '../../../services/apiService';
+import UserAvatar from '../../../components/common/UserAvatar';
 
 const AdminSidebar = () => {
   const location = useLocation();
