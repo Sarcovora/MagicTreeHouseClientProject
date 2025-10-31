@@ -5,6 +5,17 @@
  * Initially, it contains hardcoded data/functions to simulate API calls.
  */
 
+import axios from 'axios';
+
+// --- Configuration ---
+const DEFAULT_API_BASE = 'http://localhost:3001';
+const apiBaseFromEnv = (import.meta?.env?.VITE_API_BASE_URL || DEFAULT_API_BASE).replace(/\/$/, '');
+const apiPrefix = import.meta?.env?.VITE_API_PREFIX ?? '/api';
+const apiClient = axios.create({
+  baseURL: `${apiBaseFromEnv}${apiPrefix}`,
+  timeout: 10000,
+});
+
 // --- Mock Data ---
 
 const mockProjects = [
@@ -196,46 +207,269 @@ const mockProjects = [
       email: 'john@example.com',
       phone: '+1 234 567 8900'
   };
-  
-  // --- API Functions ---
-  
-  // Simulate API call delay
-  const simulateDelay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
-  
-  export const getSeasons = async () => {
+
+// --- Helpers & Cache ---
+
+const simulateDelay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
+
+const seasonProjectsCache = new Map(); // Map<string, Array<NormalizedProject>>
+
+const resetSeasonProjectsCache = () => {
+  seasonProjectsCache.clear();
+};
+
+const getCachedProject = (projectId) => {
+  for (const projects of seasonProjectsCache.values()) {
+    const match = projects.find(project => `${project.id}` === `${projectId}`);
+    if (match) {
+      return match;
+    }
+  }
+  return null;
+};
+
+const normalizeProjectRecord = (record = {}, { seasonYear } = {}) => {
+  const computedSeasonYear = record.seasonYear ?? record.season ?? seasonYear ?? '';
+
+  const ensureMetrics = (metrics) => ({
+    canopyGrowth: metrics?.canopyGrowth ?? (record.totalTrees ? `${record.totalTrees} trees` : 'N/A'),
+    biodiversity: metrics?.biodiversity ?? 'N/A',
+    carbonOffset: metrics?.carbonOffset ?? 'N/A',
+    treesSurvival: metrics?.treesSurvival ?? 'N/A',
+  });
+
+  const ensureContact = (contact) => ({
+    phone: contact?.phone ?? record.phone ?? 'N/A',
+    email: contact?.email ?? record.email ?? 'N/A',
+  });
+
+  if (record.name && record.seasonYear) {
+    const normalizedContact = ensureContact(record.contact);
+    const normalizedMetrics = ensureMetrics(record.metrics);
+    return {
+      ...record,
+      seasonYear: computedSeasonYear || record.seasonYear,
+      contact: normalizedContact,
+      metrics: normalizedMetrics,
+    };
+  }
+
+  const primaryImage =
+    record.image ??
+    (Array.isArray(record.plantingPhotoUrls) && record.plantingPhotoUrls[0]) ??
+    (Array.isArray(record.beforePhotoUrls) && record.beforePhotoUrls[0]) ??
+    record.finalMapUrl ??
+    null;
+
+  const name =
+    record.name ??
+    record.title ??
+    record.ownerDisplayName ??
+    record.ownerFullName ??
+    record.ownerFirstName ??
+    record.uniqueId ??
+    'Untitled Project';
+
+  const landowner =
+    record.landowner ??
+    record.ownerFullName ??
+    record.ownerDisplayName ??
+    record.ownerFirstName ??
+    'N/A';
+
+  return {
+    id: record.id ?? record.uniqueId ?? `${name}-${computedSeasonYear}`,
+    seasonYear: computedSeasonYear,
+    name,
+    landowner,
+    location: record.location ?? record.city ?? '',
+    address: record.address ?? '',
+    image: primaryImage,
+    contact: ensureContact(record.contact),
+    metrics: ensureMetrics(record.metrics),
+    description: record.description ?? record.landRegion ?? 'No description provided.',
+    status: record.status ?? 'Unknown',
+    startDate: record.startDate ?? record.plantingDate ?? record.applicationDate ?? '',
+    lastUpdated: record.lastUpdated ?? record.updatedAt ?? '',
+    raw: record.raw ?? record,
+  };
+};
+
+const fetchProjectsBySeasonFromApi = async (seasonYear, { useCache = true } = {}) => {
+  if (!seasonYear) {
+    return [];
+  }
+
+  if (useCache && seasonProjectsCache.has(seasonYear)) {
+    return seasonProjectsCache.get(seasonYear);
+  }
+
+  const response = await apiClient.get(`/projects/season/${encodeURIComponent(seasonYear)}`);
+  const records = Array.isArray(response.data) ? response.data : [];
+  const normalizedProjects = records.map(record =>
+    normalizeProjectRecord({ ...record, seasonYear: record.season ?? seasonYear }, { seasonYear })
+  );
+
+  seasonProjectsCache.set(seasonYear, normalizedProjects);
+  return normalizedProjects;
+};
+
+// --- API Functions ---
+
+export const getSeasons = async () => {
+  try {
+    const response = await apiClient.get('/seasons');
+    const rawSeasons = Array.isArray(response.data) ? response.data : [];
+
+    const normalized = rawSeasons
+      .map((entry, index) => {
+        if (typeof entry === 'string') {
+          return {
+            id: entry,
+            year: entry,
+            projectCount: 0,
+          };
+        }
+        if (entry && typeof entry === 'object') {
+          const year = entry.year || entry.name || entry.label || '';
+          if (!year) {
+            return null;
+          }
+          return {
+            id: entry.id || year || index,
+            year,
+            projectCount: typeof entry.projectCount === 'number'
+              ? entry.projectCount
+              : 0,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    const seasonsWithCounts = await Promise.all(
+      normalized.map(async (season) => {
+        if (!season.year) {
+          return season;
+        }
+        try {
+          const projects = await fetchProjectsBySeasonFromApi(season.year, { useCache: true });
+          return {
+            ...season,
+            projectCount: projects.length,
+          };
+        } catch (innerError) {
+          console.warn(`API Call: getSeasons -> Failed to fetch projects for season ${season.year}`, innerError);
+          return season;
+        }
+      })
+    );
+
+    return seasonsWithCounts.sort((a, b) => b.year.localeCompare(a.year));
+  } catch (error) {
+    console.error('API Call: getSeasons -> Failed, falling back to mock data.', error);
+    resetSeasonProjectsCache();
+    const fallbackSeasons = mockSeasons
+      .map((season) => ({
+        ...season,
+        projectCount: mockProjects.filter(project => project.seasonYear === season.year).length,
+      }))
+      .sort((a, b) => b.year.localeCompare(a.year));
+
+    fallbackSeasons.forEach((season) => {
+      const projects = mockProjects
+        .filter(project => project.seasonYear === season.year)
+        .map(project => normalizeProjectRecord(project, { seasonYear: project.seasonYear }));
+      seasonProjectsCache.set(season.year, projects);
+    });
+
+    return fallbackSeasons;
+  }
+};
+
+export const getAllProjects = async () => {
+  try {
+    const seasons = await getSeasons();
+    const seasonYears = seasons.map(season => season.year).filter(Boolean);
+
+    if (seasonYears.length === 0) {
+      return [];
+    }
+
+    const projectLists = await Promise.all(
+      seasonYears.map(async (seasonYear) => {
+        try {
+          return await fetchProjectsBySeasonFromApi(seasonYear, { useCache: true });
+        } catch (error) {
+          console.error(`API Call: getAllProjects -> Failed to fetch projects for season ${seasonYear}`, error);
+          return [];
+        }
+      })
+    );
+
+    const flattened = projectLists.flat();
+    if (flattened.length > 0) {
+      return flattened;
+    }
+  } catch (error) {
+    console.error('API Call: getAllProjects -> Failed, falling back to mock data.', error);
+  }
+
+  await simulateDelay();
+  return mockProjects.map(project => normalizeProjectRecord(project, { seasonYear: project.seasonYear }));
+};
+
+export const getProjectsBySeason = async (seasonYear) => {
+  if (!seasonYear) {
+    return [];
+  }
+
+  try {
+    return await fetchProjectsBySeasonFromApi(seasonYear, { useCache: true });
+  } catch (error) {
+    console.error(`API Call: getProjectsBySeason(${seasonYear}) -> Failed, falling back to mock data.`, error);
     await simulateDelay();
-    // console.log("API Call: getSeasons -> Returning:", mockSeasons);
-    // In a real API, you might calculate project counts here or the backend would provide them
-      const seasonsWithCounts = mockSeasons.map(season => ({
-          ...season,
-          projectCount: mockProjects.filter(p => p.seasonYear === season.year).length
-      }));
-    return [...seasonsWithCounts]; // Return a copy
-  };
-  
-  export const getAllProjects = async () => {
+    const fallbackProjects = mockProjects
+      .filter(project => project.seasonYear === seasonYear)
+      .map(project => normalizeProjectRecord(project, { seasonYear }));
+    seasonProjectsCache.set(seasonYear, fallbackProjects);
+    return fallbackProjects;
+  }
+};
+
+export const getProjectDetails = async (projectId) => {
+  if (!projectId) {
+    return null;
+  }
+
+  const cachedProject = getCachedProject(projectId);
+  if (cachedProject) {
+    return cachedProject;
+  }
+
+  try {
+    const response = await apiClient.get(`/projects/details/${encodeURIComponent(projectId)}`);
+    if (!response.data) {
+      return null;
+    }
+
+    const normalized = normalizeProjectRecord(response.data);
+    if (normalized.seasonYear) {
+      const existing = seasonProjectsCache.get(normalized.seasonYear) || [];
+      if (!existing.some(project => `${project.id}` === `${normalized.id}`)) {
+        seasonProjectsCache.set(normalized.seasonYear, [...existing, normalized]);
+      }
+    }
+
+    return normalized;
+  } catch (error) {
+    console.error(`API Call: getProjectDetails(${projectId}) -> Failed, falling back to mock data.`, error);
     await simulateDelay();
-    // console.log("API Call: getAllProjects -> Returning:", mockProjects);
-    return [...mockProjects]; // Return a copy
-  };
-  
-  export const getProjectsBySeason = async (seasonYear) => {
-      await simulateDelay();
-      const projects = mockProjects.filter(p => p.seasonYear === seasonYear);
-    //   console.log(`API Call: getProjectsBySeason(${seasonYear}) -> Returning:`, projects);
-      return [...projects]; // Return a copy
-  };
-  
-  
-  export const getProjectDetails = async (projectId) => {
-    await simulateDelay();
-    // Convert projectId from URL param (string) to number if IDs are numbers
-    const idToFind = parseInt(projectId, 10);
-    const project = mockProjects.find((p) => p.id === idToFind);
-    console.log(`API Call: getProjectDetails(${projectId}) -> Returning:`, project);
-    return project ? { ...project } : null; // Return a copy or null
-  };
-  
+    const fallback = mockProjects.find(project => `${project.id}` === `${projectId}`);
+    return fallback ? normalizeProjectRecord(fallback, { seasonYear: fallback.seasonYear }) : null;
+  }
+};
+
   export const addSeason = async (year) => {
       await simulateDelay();
       const newSeason = {
