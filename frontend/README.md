@@ -21,75 +21,51 @@ npm run build
 frontend/
 ├── src/
 │   ├── services/
-│   │   ├── magicTreeHouseAPI.js    # ✨ Main API service (USE THIS)
-│   │   ├── testAPI.js              # Test script
-│   │   ├── actualApiService.js     # ⚠️ OLD - See migration guide
-│   │   ├── apiService.js           # ⚠️ OLD - Mock data
-│   │   └── dummyUseExamples.js     # ⚠️ OLD - Example code
-│   ├── hooks/
-│   │   └── useMagicTreeHouse.js    # ✨ React hooks for API
-│   └── components/
-│       └── ... (your components)
-├── test-api.html                   # Interactive API test page
+│   │   └── apiService.js           # Centralized API client (currently returns mock data)
+│   ├── components/
+│   │   └── ...                     # Shared UI building blocks
+│   ├── pages/
+│   │   └── ...                     # Admin & landowner screens
+│   └── assets/                     # Icons, images, etc.
+├── test-api.html                   # Standalone API smoke-test page
 └── README.md                       # This file
 ```
 
 ## 🔧 API Service
 
-### Using the New API Service (Recommended)
+### Current API Service
 
-**Import the service:**
+All frontend data access flows through `src/services/apiService.js`. At the moment it still returns mock data while the Airtable integration is being wired in. As you replace mocks with live endpoints, update the functions inside that file so every component automatically benefits.
+
+**Example usage:**
 ```javascript
-import api from './services/magicTreeHouseAPI';
+import apiService from './services/apiService';
+
+const seasons = await apiService.getSeasons();
+const projects = await apiService.getProjectsBySeason('24-25');
 ```
 
-**Use in your code:**
-```javascript
-// Get all seasons
-const seasons = await api.seasons.getAll();
-
-// Get projects for a season
-const projects = await api.projects.getBySeason('24-25');
-
-// Get specific project (with Property Images!)
-const project = await api.projects.getById('rec1dp7COcr1qPsmj');
-console.log(project.propertyImageUrls); // Array of image URLs
-```
-
-### Using React Hooks (Even Better!)
-
-```javascript
-import { useProjects, useProject } from './hooks/useMagicTreeHouse';
-
-function MyComponent() {
-  // Automatic loading, error handling, and caching!
-  const { projects, loading, error, refresh } = useProjects('24-25');
-
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  return (
-    <ul>
-      {projects.map(p => (
-        <li key={p.id}>{p.ownerFullName}</li>
-      ))}
-    </ul>
-  );
-}
-```
+> **Heads-up:** Older helper files (`magicTreeHouseAPI`, `actualApiService`, example hooks, etc.) have been removed because they were unused and causing confusion. If you still have local imports referencing them, switch to the functions exported from `apiService.js`.
 
 ## 🖼️ Property Images
 
-Projects can have multiple property images. Access them via `propertyImageUrls`:
+Projects can have multiple property images. Once `apiService.getProjectDetails(recordId)` is wired to the backend it will return a `propertyImageUrls` array you can render:
 
 ```javascript
+import { useEffect, useState } from 'react';
+import apiService from './services/apiService';
+
 function PropertyGallery({ recordId }) {
-  const { project } = useProject(recordId);
+  const [project, setProject] = useState(null);
+
+  useEffect(() => {
+    apiService.getProjectDetails(recordId).then(setProject);
+  }, [recordId]);
 
   return (
     <div>
       {project?.propertyImageUrls?.map((url, i) => (
-        <img key={i} src={url} alt={`Property ${i+1}`} />
+        <img key={i} src={url} alt={`Property ${i + 1}`} />
       ))}
     </div>
   );
@@ -99,15 +75,7 @@ function PropertyGallery({ recordId }) {
 ## 🧪 Testing
 
 ### Interactive Test Page
-Open `test-api.html` in your browser to test all API endpoints with a nice UI.
-
-### Backend Health Check
-```javascript
-import api from './services/magicTreeHouseAPI';
-
-const isOnline = await api.utils.healthCheck();
-console.log(isOnline ? 'Backend online!' : 'Backend offline');
-```
+Open `test-api.html` in your browser to exercise the backend endpoints with a simple UI. This file uses `fetch` directly and is unaffected by the service cleanup.
 
 ## 📖 Documentation
 
@@ -118,22 +86,7 @@ console.log(isOnline ? 'Backend online!' : 'Backend offline');
 
 ## 🔄 Migration from Old Service
 
-If your code uses `actualApiService.js` or other old services, see the **[Migration Guide](../documentation/MIGRATION_GUIDE.md)** for step-by-step instructions.
-
-**Quick migration:**
-```javascript
-// OLD
-import { getProjectsBySeason } from './services/actualApiService';
-const projects = await getProjectsBySeason('24-25');
-
-// NEW (Vanilla)
-import api from './services/magicTreeHouseAPI';
-const projects = await api.projects.getBySeason('24-25');
-
-// NEW (Hooks - Recommended!)
-import { useProjects } from './hooks/useMagicTreeHouse';
-const { projects } = useProjects('24-25');
-```
+If you still have code in feature branches that imported any of the removed helper files, migrate those calls to the functions exposed by `apiService.js`.
 
 ## ⚙️ Configuration
 
