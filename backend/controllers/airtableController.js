@@ -111,6 +111,27 @@ const handleUpdateProject = asyncHandler(async (req, res) => {
     }
 });
 
+const handleDeleteSeason = asyncHandler(async (req, res) => {
+    const { seasonId } = req.params;
+    if (!seasonId) {
+        return res.status(400).json({ message: 'Season ID parameter is required.' });
+    }
+
+    const normalizedSeason = decodeURIComponent(seasonId).trim();
+    if (!normalizedSeason) {
+        return res.status(400).json({ message: 'Season ID parameter must be a non-empty string.' });
+    }
+
+    try {
+        const result = await airtableService.deleteSeasonOption(normalizedSeason);
+        res.json(result);
+    } catch (error) {
+        console.error(`Controller error deleting season '${seasonId}':`, error.message);
+        const statusCode = error.statusCode ?? 500;
+        res.status(statusCode).json({ message: error.message || 'Failed to delete season.' });
+    }
+});
+
 module.exports = {
     handleGetAllSeasons,
     handleGetProjectsBySeason,
@@ -118,4 +139,5 @@ module.exports = {
     handleAddSeason,
     handleAddProject,
     handleUpdateProject,
+    handleDeleteSeason,
 };

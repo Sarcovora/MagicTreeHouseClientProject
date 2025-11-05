@@ -5,7 +5,7 @@ const cors = require('cors');
 const airtableRoutes = require('./routes/airtableRoutes'); // We'll create this next
 
 const app = express();
-const PORT = process.env.PORT || 3001; // Use environment port or default
+const PORT = process.env.PORT || 3000; // Use environment port or default
 
 // --- Middleware ---
 app.use(cors()); // Allow requests from different origins (like your frontend)

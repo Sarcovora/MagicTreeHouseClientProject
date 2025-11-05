@@ -13,7 +13,7 @@ export const DOCUMENT_CATEGORIES = [
 ];
 
 // Project statuses
-export const PROJECT_STATUSES = ["Active", "Completed", "Pending", "Cancelled"];
+// export const PROJECT_STATUSES = ["Active", "Completed", "Pending", "Cancelled"];
 
 // Default pagination settings
 export const PAGINATION = {

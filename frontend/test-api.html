@@ -230,27 +230,36 @@
                 <div id="seasons-result"></div>
             </div>
 
-            <!-- Test 3: Get Projects -->
+            <!-- Test 3: Add Season Option -->
             <div class="test-section">
-                <h2>3. Get Projects by Season</h2>
+                <h2>3. Add Season Option</h2>
+                <input type="text" id="add-season-input" placeholder="Enter new season (e.g., 26-27)" style="padding: 8px; margin-right: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                <button class="button" onclick="testAddSeason()">Add Season</button>
+                <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">⚠️ Adds a new option to Airtable's Season field. Double-check before running in production.</p>
+                <div id="add-season-result"></div>
+            </div>
+
+            <!-- Test 4: Get Projects -->
+            <div class="test-section">
+                <h2>4. Get Projects by Season</h2>
                 <input type="text" id="season-input" placeholder="Enter season (e.g., 25-26)" value="25-26" style="padding: 8px; margin-right: 10px; border: 1px solid #ccc; border-radius: 4px;">
                 <button class="button" onclick="testProjects()">Fetch Projects</button>
                 <div id="projects-result"></div>
             </div>
 
-            <!-- Test 4: Get Project Details -->
+            <!-- Test 5: Get Project Details -->
             <div class="test-section">
-                <h2>4. Get Project Details (with Property Images)</h2>
+                <h2>5. Get Project Details (with Property Images)</h2>
                 <input type="text" id="record-input" placeholder="Enter record ID (e.g., recngkmjhSrvnJECr)" value="recngkmjhSrvnJECr" style="padding: 8px; margin-right: 10px; border: 1px solid #ccc; border-radius: 4px; width: 300px;">
                 <button class="button" onclick="testProjectDetails()">Fetch Details</button>
                 <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">💡 Tip: Annie Armstrong (recngkmjhSrvnJECr) has Property Images</p>
                 <div id="details-result"></div>
             </div>
 
-            <!-- Test 5: Run All Tests -->
+            <!-- Test 6: Run All Tests -->
             <div class="test-section">
-                <h2>5. Run All Tests</h2>
-                <button class="button" onclick="runAllTests()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">▶ Run All Tests</button>
+                <h2>6. Run All Tests</h2>
+                <button class="button" onclick="runAllTests()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">▶ Run All Tests (GET only)</button>
                 <button class="button secondary" onclick="clearAllResults()">Clear Results</button>
             </div>
 
@@ -340,6 +349,7 @@
         function clearAllResults() {
             document.getElementById('health-result').innerHTML = '';
             document.getElementById('seasons-result').innerHTML = '';
+            document.getElementById('add-season-result').innerHTML = '';
             document.getElementById('projects-result').innerHTML = '';
             document.getElementById('details-result').innerHTML = '';
             document.getElementById('summary').style.display = 'none';
@@ -384,7 +394,47 @@
             }
         }
 
-        // Test 3: Get Projects
+        // Test 3: Add Season Option
+        async function testAddSeason() {
+            const input = document.getElementById('add-season-input');
+            const seasonName = input.value.trim();
+
+            if (!seasonName) {
+                alert('Please enter a season name.');
+                return;
+            }
+
+            showLoading('add-season-result');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/seasons`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ seasonName })
+                });
+
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (parseError) {
+                    data = { message: 'No JSON response body.' };
+                }
+
+                if (response.ok) {
+                    input.value = '';
+                    showResult('add-season-result', true, `Season "${seasonName}" added`, data);
+                } else {
+                    const errorMessage = data?.message || `Status: ${response.status}`;
+                    showResult('add-season-result', false, 'Failed to Add Season', null, errorMessage);
+                }
+            } catch (error) {
+                showResult('add-season-result', false, 'Failed to Add Season', null, error.message);
+            }
+        }
+
+        // Test 4: Get Projects
         async function testProjects() {
             const season = document.getElementById('season-input').value.trim();
 
@@ -419,7 +469,7 @@
             }
         }
 
-        // Test 4: Get Project Details
+        // Test 5: Get Project Details
         async function testProjectDetails() {
             const recordId = document.getElementById('record-input').value.trim();
 

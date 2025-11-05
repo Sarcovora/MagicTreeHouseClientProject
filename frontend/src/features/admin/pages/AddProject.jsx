@@ -37,13 +37,15 @@ const AddProject = () => {
     setIsFetchingSeasons(true);
     apiService.getSeasons()
       .then(data => {
-        setSeasons(data ? data.sort((a, b) => b.year.localeCompare(a.year)) : []); // Sort desc
-        // If preselectedSeason exists but isn't in fetched seasons, maybe add it? Or clear selection?
-        // For now, we'll just keep the preselection if it came from the URL
-        if (preselectedSeason && !data.some(s => s.year === preselectedSeason)) {
-            console.warn(`Preselected season ${preselectedSeason} not found in fetched seasons.`);
-            // Optionally add it to the list for selection:
-            // setSeasons(prev => [...prev, { year: preselectedSeason, id: 'temp', projectCount: 0 }].sort((a, b) => b.year.localeCompare(a.year)));
+        const normalizedSeasons = (data || [])
+          .filter(Boolean)
+          .map((year) => ({ id: year, year }));
+
+        normalizedSeasons.sort((a, b) => b.year.localeCompare(a.year));
+        setSeasons(normalizedSeasons);
+
+        if (preselectedSeason && !normalizedSeasons.some(s => s.year === preselectedSeason)) {
+          console.warn(`Preselected season ${preselectedSeason} not found in fetched seasons.`);
         }
       })
       .catch(err => {

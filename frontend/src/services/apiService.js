@@ -1,14 +1,26 @@
 // src/services/apiService.js
 
 /**
- * This service centralizes all interactions with the backend API.
- * Initially, it contains hardcoded data/functions to simulate API calls.
+ * This module centralizes calls the frontend makes to the backend.
+ *
+ * REAL DATA
+ * --------
+ *   - getSeasons           → GET /api/seasons
+*   - getProjectsBySeason  → GET /api/projects/season/:season
+*   - getAllProjects       → Aggregates the above
+*   - getProjectDetails    → GET /api/projects/details/:recordId
+ *   - addSeason            → POST /api/seasons
+ *
+ * MOCK DATA (until matching backend endpoints exist)
+ * -------------------------------------------------
+ *   - addSeason, addProject, updateProject, deleteProject, getUserProfile, etc.
+ *     These still return local fixtures and log when used.
  */
 
 import axios from 'axios';
 
 // --- Configuration ---
-const DEFAULT_API_BASE = 'http://localhost:3001';
+const DEFAULT_API_BASE = 'http://localhost:3000';
 const apiBaseFromEnv = (import.meta?.env?.VITE_API_BASE_URL || DEFAULT_API_BASE).replace(/\/$/, '');
 const apiPrefix = import.meta?.env?.VITE_API_PREFIX ?? '/api';
 const apiClient = axios.create({
@@ -41,7 +53,6 @@ const mockProjects = [
         "A comprehensive reforestation project aimed at restoring native woodland...",
       status: "Active",
       startDate: "2023-01-15",
-      lastUpdated: "2024-01-20",
     },
     {
       id: 2,
@@ -65,7 +76,6 @@ const mockProjects = [
         "A project focused on reviving forest ecosystems in the Pacific Northwest...",
       status: "Active",
       startDate: "2023-03-10",
-      lastUpdated: "2024-02-15",
     },
     {
       id: 3,
@@ -89,7 +99,6 @@ const mockProjects = [
         "An innovative approach to urban reforestation in Washington state...",
       status: "Completed", // Changed status for variety
       startDate: "2022-05-20", // Adjusted start date
-      lastUpdated: "2023-11-30",
     },
     {
       id: 4,
@@ -112,7 +121,6 @@ const mockProjects = [
       description: "A newly initiated project focused on preserving oak trees.",
       status: "Pending",
       startDate: "2024-07-01",
-      lastUpdated: "2024-07-01",
     },
   ];
   
@@ -243,6 +251,8 @@ const normalizeProjectRecord = (record = {}, { seasonYear } = {}) => {
     email: contact?.email ?? record.email ?? 'N/A',
   });
 
+  const toArray = (value) => Array.isArray(value) ? value : value ? [value] : [];
+
   if (record.name && record.seasonYear) {
     const normalizedContact = ensureContact(record.contact);
     const normalizedMetrics = ensureMetrics(record.metrics);
@@ -288,9 +298,21 @@ const normalizeProjectRecord = (record = {}, { seasonYear } = {}) => {
     contact: ensureContact(record.contact),
     metrics: ensureMetrics(record.metrics),
     description: record.description ?? record.landRegion ?? 'No description provided.',
+    ownerFirstName: record.ownerFirstName ?? '',
+    ownerDisplayName: record.ownerDisplayName ?? '',
+    phone: record.phone ?? record.contact?.phone ?? '',
+    email: record.email ?? record.contact?.email ?? '',
+    applicationDate: record.applicationDate ?? '',
+    consultationDate: record.consultationDate ?? '',
+    flaggingDate: record.flaggingDate ?? '',
+    plantingDate: record.plantingDate ?? '',
+    quizScorePreConsultation: record.quizScorePreConsultation ?? '',
+    quizScorePostPlanting: record.quizScorePostPlanting ?? '',
+    beforePhotoUrls: toArray(record.beforePhotoUrls),
+    plantingPhotoUrls: toArray(record.plantingPhotoUrls),
+    propertyImageUrls: toArray(record.propertyImageUrls),
     status: record.status ?? 'Unknown',
     startDate: record.startDate ?? record.plantingDate ?? record.applicationDate ?? '',
-    lastUpdated: record.lastUpdated ?? record.updatedAt ?? '',
     raw: record.raw ?? record,
   };
 };
@@ -314,83 +336,32 @@ const fetchProjectsBySeasonFromApi = async (seasonYear, { useCache = true } = {}
   return normalizedProjects;
 };
 
-// --- API Functions ---
+// --- REAL API FUNCTIONS ----------------------------------------------------
 
 export const getSeasons = async () => {
   try {
     const response = await apiClient.get('/seasons');
-    const rawSeasons = Array.isArray(response.data) ? response.data : [];
-
-    const normalized = rawSeasons
-      .map((entry, index) => {
-        if (typeof entry === 'string') {
-          return {
-            id: entry,
-            year: entry,
-            projectCount: 0,
-          };
-        }
-        if (entry && typeof entry === 'object') {
-          const year = entry.year || entry.name || entry.label || '';
-          if (!year) {
-            return null;
-          }
-          return {
-            id: entry.id || year || index,
-            year,
-            projectCount: typeof entry.projectCount === 'number'
-              ? entry.projectCount
-              : 0,
-          };
-        }
-        return null;
-      })
-      .filter(Boolean);
-
-    const seasonsWithCounts = await Promise.all(
-      normalized.map(async (season) => {
-        if (!season.year) {
-          return season;
-        }
-        try {
-          const projects = await fetchProjectsBySeasonFromApi(season.year, { useCache: true });
-          return {
-            ...season,
-            projectCount: projects.length,
-          };
-        } catch (innerError) {
-          console.warn(`API Call: getSeasons -> Failed to fetch projects for season ${season.year}`, innerError);
-          return season;
-        }
-      })
-    );
-
-    return seasonsWithCounts.sort((a, b) => b.year.localeCompare(a.year));
+    if (!Array.isArray(response.data)) {
+      return [];
+    }
+    return response.data
+      .filter(Boolean)
+      .map(String)
+      .sort((a, b) => b.localeCompare(a));
   } catch (error) {
-    console.error('API Call: getSeasons -> Failed, falling back to mock data.', error);
-    resetSeasonProjectsCache();
-    const fallbackSeasons = mockSeasons
-      .map((season) => ({
-        ...season,
-        projectCount: mockProjects.filter(project => project.seasonYear === season.year).length,
-      }))
-      .sort((a, b) => b.year.localeCompare(a.year));
-
-    fallbackSeasons.forEach((season) => {
-      const projects = mockProjects
-        .filter(project => project.seasonYear === season.year)
-        .map(project => normalizeProjectRecord(project, { seasonYear: project.seasonYear }));
-      seasonProjectsCache.set(season.year, projects);
-    });
-
-    return fallbackSeasons;
+    console.error('API Call: getSeasons -> Failed.', error);
+    throw new Error(
+      error?.response?.data?.message ||
+      error?.message ||
+      'Failed to fetch seasons from backend.'
+    );
   }
 };
 
 export const getAllProjects = async () => {
   try {
     const seasons = await getSeasons();
-    const seasonYears = seasons.map(season => season.year).filter(Boolean);
+    const seasonYears = [...new Set(seasons)].filter(Boolean);
 
     if (seasonYears.length === 0) {
       return [];
@@ -411,12 +382,15 @@ export const getAllProjects = async () => {
     if (flattened.length > 0) {
       return flattened;
     }
+    return [];
   } catch (error) {
-    console.error('API Call: getAllProjects -> Failed, falling back to mock data.', error);
+    console.error('API Call: getAllProjects -> Failed.', error);
+    throw new Error(
+      error?.response?.data?.message ||
+      error?.message ||
+      'Failed to fetch projects from backend.'
+    );
   }
-
-  await simulateDelay();
-  return mockProjects.map(project => normalizeProjectRecord(project, { seasonYear: project.seasonYear }));
 };
 
 export const getProjectsBySeason = async (seasonYear) => {
@@ -427,13 +401,12 @@ export const getProjectsBySeason = async (seasonYear) => {
   try {
     return await fetchProjectsBySeasonFromApi(seasonYear, { useCache: true });
   } catch (error) {
-    console.error(`API Call: getProjectsBySeason(${seasonYear}) -> Failed, falling back to mock data.`, error);
-    await simulateDelay();
-    const fallbackProjects = mockProjects
-      .filter(project => project.seasonYear === seasonYear)
-      .map(project => normalizeProjectRecord(project, { seasonYear }));
-    seasonProjectsCache.set(seasonYear, fallbackProjects);
-    return fallbackProjects;
+    console.error(`API Call: getProjectsBySeason(${seasonYear}) -> Failed.`, error);
+    throw new Error(
+      error?.response?.data?.message ||
+      error?.message ||
+      `Failed to fetch projects for season ${seasonYear}.`
+    );
   }
 };
 
@@ -463,27 +436,44 @@ export const getProjectDetails = async (projectId) => {
 
     return normalized;
   } catch (error) {
-    console.error(`API Call: getProjectDetails(${projectId}) -> Failed, falling back to mock data.`, error);
-    await simulateDelay();
-    const fallback = mockProjects.find(project => `${project.id}` === `${projectId}`);
-    return fallback ? normalizeProjectRecord(fallback, { seasonYear: fallback.seasonYear }) : null;
+    console.error(`API Call: getProjectDetails(${projectId}) -> Failed.`, error);
+    throw new Error(
+      error?.response?.data?.message ||
+      error?.message ||
+      `Failed to fetch project ${projectId} from backend.`
+    );
   }
 };
 
-  export const addSeason = async (year) => {
-      await simulateDelay();
-      const newSeason = {
-          id: Date.now(), // simple unique ID
-          year: year,
-          projectCount: 0
-      };
-      mockSeasons.push(newSeason);
-      // Ensure seasons are sorted? Or handle sorting on frontend.
-      mockSeasons.sort((a, b) => b.year.localeCompare(a.year)); // Keep sorted by year desc
-      console.log("API Call: addSeason -> New Seasons:", mockSeasons);
-      return { ...newSeason };
-  };
-  
+export const addSeason = async (seasonYear) => {
+  if (!seasonYear || typeof seasonYear !== 'string' || !seasonYear.trim()) {
+    throw new Error('Season year is required.');
+  }
+
+  try {
+    const payload = { seasonName: seasonYear.trim() };
+    const response = await apiClient.post('/seasons', payload);
+
+    // A season option addition may affect cached project lists
+    resetSeasonProjectsCache();
+
+    return {
+      id: seasonYear.trim(),
+      year: seasonYear.trim(),
+      message: response?.data?.message ?? null,
+      raw: response?.data ?? null,
+    };
+  } catch (error) {
+    console.error(`API Call: addSeason(${seasonYear}) -> Failed.`, error);
+    throw new Error(
+      error?.response?.data?.message ||
+      error?.message ||
+      `Failed to add season '${seasonYear}'.`
+    );
+  }
+};
+
+// --- MOCKED / LEGACY FUNCTIONS ---------------------------------------------
   export const addProject = async (projectData) => {
       await simulateDelay();
       const newProject = {
@@ -492,10 +482,9 @@ export const getProjectDetails = async (projectId) => {
           // Ensure required fields like image are handled (e.g., set to null if not provided)
           image: projectData.image || null,
           // Add default metrics/contact if needed
-          metrics: projectData.metrics || { canopyGrowth: "N/A", biodiversity: "N/A", carbonOffset: "N/A", treesSurvival: "N/A"},
-          contact: projectData.contact || { phone: "N/A", email: "N/A"},
-          lastUpdated: new Date().toISOString().split('T')[0], // Set current date
-      };
+      metrics: projectData.metrics || { canopyGrowth: "N/A", biodiversity: "N/A", carbonOffset: "N/A", treesSurvival: "N/A"},
+      contact: projectData.contact || { phone: "N/A", email: "N/A"},
+    };
       mockProjects.push(newProject);
   
       // Update project count for the relevant season
@@ -503,14 +492,12 @@ export const getProjectDetails = async (projectId) => {
       if (seasonIndex !== -1) {
           mockSeasons[seasonIndex].projectCount++;
       } else {
-          // Optionally add the season if it doesn't exist? Or handle this case?
-          console.warn(`Season ${newProject.seasonYear} not found for new project.`);
-          // For now, let's add the season if it's missing
-          await addSeason(newProject.seasonYear); // Recursively call addSeason
-           const newSeasonIndex = mockSeasons.findIndex(s => s.year === newProject.seasonYear);
-           if (newSeasonIndex !== -1) {
-              mockSeasons[newSeasonIndex].projectCount = 1;
-           }
+          console.warn(`Season ${newProject.seasonYear} not found for new project. Updating mock cache only.`);
+          mockSeasons.push({
+              id: Date.now(),
+              year: newProject.seasonYear,
+              projectCount: 1,
+          });
       }
   
       console.log("API Call: addProject -> New Project:", newProject);
@@ -525,7 +512,6 @@ export const getProjectDetails = async (projectId) => {
           mockProjects[projectIndex] = {
               ...mockProjects[projectIndex],
               ...projectData,
-              lastUpdated: new Date().toISOString().split('T')[0], // Update last updated date
           };
           console.log(`API Call: updateProject(${projectId}) -> Updated Project:`, mockProjects[projectIndex]);
           return { ...mockProjects[projectIndex] }; // Return copy
@@ -557,23 +543,31 @@ export const getProjectDetails = async (projectId) => {
   
   
 export const deleteSeason = async (seasonId) => {
-    await simulateDelay();
-    const seasonIndex = mockSeasons.findIndex(s => s.id === seasonId);
-    if (seasonIndex !== -1) {
-        // Check if the season has projects before deleting
-        if (mockSeasons[seasonIndex].projectCount > 0) {
-            console.error(`API Call: deleteSeason(${seasonId}) -> Failed: Season has projects.`);
-            // Throw an error that can be caught by the frontend
-            throw new Error(`Cannot delete season "${mockSeasons[seasonIndex].year}" because it contains projects. Please move or delete the projects first.`);
-        }
+  const normalizedId = String(seasonId ?? "").trim();
+  if (!normalizedId) {
+    throw new Error("Season ID is required.");
+  }
 
-        // Proceed with deletion if project count is 0
-        mockSeasons.splice(seasonIndex, 1);
-        console.log(`API Call: deleteSeason(${seasonId}) -> Success`);
-        return { success: true };
-    }
-    console.error(`API Call: deleteSeason(${seasonId}) -> Season not found`);
-    return { success: false }; // Or throw not found error
+  try {
+    const response = await apiClient.delete(`/seasons/${encodeURIComponent(normalizedId)}`);
+
+    // Removing a season invalidates any cached project lists
+    resetSeasonProjectsCache();
+
+    console.log(`API Call: deleteSeason(${normalizedId}) -> Success`);
+    return {
+      success: true,
+      message: response?.data?.message ?? null,
+      raw: response?.data ?? null,
+    };
+  } catch (error) {
+    console.error(`API Call: deleteSeason(${normalizedId}) -> Failed.`, error);
+    throw new Error(
+      error?.response?.data?.message ||
+      error?.message ||
+      `Failed to delete season '${normalizedId}'.`
+    );
+  }
 };
 
 

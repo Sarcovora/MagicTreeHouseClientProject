@@ -52,6 +52,8 @@ const FIELD_MAP = {
         flaggingDate: 'Flagging Date',
         applicationDate: 'Application Date',
         siteNumber: 'Site Number',
+        quizScorePreConsultation: 'Quiz Score - Pre-consult',
+        quizScorePostPlanting: 'Quiz Score - Post-planting',
         initialMap: 'Initial Map',
         draftMap: 'Draft Map',
         finalMap: 'Final Map',
@@ -90,6 +92,8 @@ const FIELD_MAP = {
         'Flagging Date': 'flaggingDate',
         'Site Number': 'siteNumber',
         'Participation status': 'participationStatus',
+        'Quiz Score - Pre-consult': 'quizScorePreConsultation',
+        'Quiz Score - Post-planting': 'quizScorePostPlanting',
     }
 };
 
@@ -124,6 +128,21 @@ const processRecord = (record) => {
     }
     return processed;
 };
+
+
+const SEASON_FIELD_NAME = FIELD_MAP.apiToAirtable.season || 'Season';
+
+const createServiceError = (message, statusCode = 500) => {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    return error;
+};
+
+const escapeFormulaValue = (value = '') =>
+    String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+const buildSeasonFilterFormula = (seasonName) =>
+    `{${SEASON_FIELD_NAME}} = "${escapeFormulaValue(seasonName)}"`;
 
 
 // --- Service Functions ---
@@ -427,6 +446,138 @@ const updateProject = async (recordId, projectData) => {
 };
 
 
+const normalizeSeasonName = (value = '') => {
+    const dashed = String(value ?? '')
+        .trim()
+        .replace(/[\u2010-\u2015]/g, '-') // normalize dash variants (en/em dash etc.)
+        .replace(/\s*-\s*/g, '-') // collapse spaces around hyphen
+        .replace(/\s+/g, ' '); // collapse internal whitespace
+    return dashed.toLowerCase();
+};
+
+const deleteSeasonOption = async (seasonName) => {
+    const trimmedSeason = String(seasonName || '').trim();
+    if (!trimmedSeason) {
+        throw createServiceError('Season name is required to delete option.', 400);
+    }
+
+    console.log(`Attempting to delete season option '${trimmedSeason}'`);
+
+    let existingRecords = [];
+    try {
+        existingRecords = await table.select({
+            maxRecords: 1,
+            filterByFormula: buildSeasonFilterFormula(trimmedSeason),
+            fields: ['UniqueID'],
+        }).firstPage();
+    } catch (error) {
+        console.error(`Error verifying existing projects for season '${trimmedSeason}':`, error);
+        throw createServiceError(
+            `Failed to verify projects for season '${trimmedSeason}': ${error.message}`,
+            500
+        );
+    }
+
+    if (Array.isArray(existingRecords) && existingRecords.length > 0) {
+        throw createServiceError(
+            `Cannot delete season '${trimmedSeason}' because it still has projects. Please reassign or delete those projects first.`,
+            409
+        );
+    }
+
+    let targetTable;
+    let seasonField;
+    try {
+        console.log(`Fetching metadata to locate season options...`);
+        const response = await metadataApi.get(`/tables`);
+        const tablesData = response?.data?.tables ?? [];
+
+        targetTable = tablesData.find(t => t.id === AIRTABLE_TABLE_ID) ||
+            tablesData.find(t => t.name === "Application, status, and GIS data");
+
+        if (!targetTable) {
+            throw createServiceError(
+                `Table with ID ${AIRTABLE_TABLE_ID} or name 'Application, status, and GIS data' not found in metadata.`,
+                500
+            );
+        }
+
+        seasonField = targetTable.fields.find(f => f.id === AIRTABLE_SEASON_FIELD_ID || f.name === SEASON_FIELD_NAME);
+        if (!seasonField) {
+            throw createServiceError(
+                `'Season' field (ID: ${AIRTABLE_SEASON_FIELD_ID} or name '${SEASON_FIELD_NAME}') not found in table ${targetTable.id}.`,
+                500
+            );
+        }
+    } catch (error) {
+        if (error.statusCode) {
+            throw error;
+        }
+        console.error(`Error fetching metadata for season deletion '${trimmedSeason}':`, error.response?.data || error.message);
+        throw createServiceError(
+            `Failed to fetch Airtable metadata for season deletion: ${error.message}`,
+            500
+        );
+    }
+
+    const existingChoices = seasonField.options?.choices ?? [];
+    const normalizedTargetName = normalizeSeasonName(trimmedSeason);
+    const targetChoice = existingChoices.find(choice => normalizeSeasonName(choice?.name) === normalizedTargetName);
+
+    if (!targetChoice) {
+        throw createServiceError(
+            `Season option '${trimmedSeason}' does not exist in Airtable.`,
+            404
+        );
+    }
+
+    const remainingChoices = existingChoices.filter(choice => choice.id !== targetChoice.id);
+
+    const existingChoiceOrder = seasonField.options?.choiceOrder;
+    const updatedChoiceOrder = Array.isArray(existingChoiceOrder)
+        ? existingChoiceOrder.filter(choiceId => choiceId !== targetChoice.id && remainingChoices.some(choice => choice.id === choiceId))
+        : existingChoiceOrder;
+
+    const {
+        choices: _ignoredChoices,
+        choiceOrder: _ignoredChoiceOrder,
+        ...restOptions
+    } = seasonField.options || {};
+
+    const updatedOptions = {
+        ...restOptions,
+        choices: remainingChoices,
+    };
+
+    if (updatedChoiceOrder) {
+        updatedOptions.choiceOrder = updatedChoiceOrder;
+    }
+
+    try {
+        await metadataApi.patch(`/tables/${targetTable.id}/fields/${seasonField.id}`, {
+            type: seasonField.type,
+            options: updatedOptions,
+        });
+
+        console.log(`Season option '${trimmedSeason}' removed from Airtable.`);
+        return {
+            success: true,
+            season: trimmedSeason,
+            message: `Season option '${trimmedSeason}' removed from Airtable.`,
+        };
+    } catch (error) {
+        console.error(`Error removing season option '${trimmedSeason}':`, error.response?.data || error.message);
+        const responseMessage = error.response?.data?.message;
+        throw createServiceError(
+            responseMessage
+                ? `Failed to delete season option '${trimmedSeason}': ${responseMessage}`
+                : `Failed to delete season option '${trimmedSeason}': ${error.message}`,
+            500
+        );
+    }
+};
+
+
 // --- Exports ---
 module.exports = {
     getAllSeasons,
@@ -435,4 +586,5 @@ module.exports = {
     addSeasonOption, // Export the new workaround function
     addProject,
     updateProject,
+    deleteSeasonOption,
 };

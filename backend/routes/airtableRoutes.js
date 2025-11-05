@@ -11,6 +11,10 @@ router.get('/seasons', airtableController.handleGetAllSeasons);
 // Corresponds to: AddNewFolder("24-25") - *Note: Modifies schema*
 router.post('/seasons', airtableController.handleAddSeason);
 
+// DELETE an existing season option (removes choice from 'Season' field)
+// Corresponds to: DeleteFolder("24-25")
+router.delete('/seasons/:seasonId', airtableController.handleDeleteSeason);
+
 // GET projects filtered by a specific season
 // Corresponds to: GetProjectsForSeason("24-25")
 router.get('/projects/season/:season', airtableController.handleGetProjectsBySeason);

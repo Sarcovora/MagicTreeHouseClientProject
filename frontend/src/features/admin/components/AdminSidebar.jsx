@@ -41,7 +41,9 @@ const AdminSidebar = () => {
   const menuItems = [
     { icon: <TreePine size={20} />, label: "Dashboard", path: "/admin/dashboard" },
     { icon: <FormInput size={20} />, label: "Forms", path: "/admin/forms" },
+    // WILL BE ADDED LATER
     { icon: <Bell size={20} />, label: "Notifications", path: "/admin/notifications" },
+
     { icon: <Map size={20} />, label: "Map", path: "/admin/map" },
     { icon: <Image size={20} />, label: "Photos", path: "/admin/gallery" },
   ];

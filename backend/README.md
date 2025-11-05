@@ -3,10 +3,10 @@ Run `node index.js` to start the server
 
 
 How to Use the API Endpoints:
-- Get All Seasons: `GET http://localhost:3001/api/seasons`
-- Get Projects for Season '24-25': `GET http://localhost:3001/api/projects/season/24-25`
-- Get Details for Project with Record ID 'recXXXXXXXXXXXXXX': `GET http://localhost:3001/api/projects/details/recXXXXXXXXXXXXXX` (Replace with a real record ID)
-- Add New Season Option '25-26': `POST http://localhost:3001/api/seasons`
+- Get All Seasons: `GET http://localhost:3000/api/seasons`
+- Get Projects for Season '24-25': `GET http://localhost:3000/api/projects/season/24-25`
+- Get Details for Project with Record ID 'recXXXXXXXXXXXXXX': `GET http://localhost:3000/api/projects/details/recXXXXXXXXXXXXXX` (Replace with a real record ID)
+- Add New Season Option '25-26': `POST http://localhost:3000/api/seasons`
     - Request Body (JSON): `{ "seasonName": "25-26" }`
     - Requires PAT with `schema.bases:write scope`.
 - Add New Project: `POST http://localhost:3000/api/projects`

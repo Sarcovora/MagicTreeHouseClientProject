@@ -75,10 +75,15 @@ const EditProject = () => {
         } else {
           setError(`Project with ID ${projectId} not found.`);
         }
-        setSeasons(seasonsData ? seasonsData.sort((a, b) => b.year.localeCompare(a.year)) : []);
+
+        const normalizedSeasons = (seasonsData || [])
+          .filter(Boolean)
+          .map((year) => ({ id: year, year }))
+          .sort((a, b) => b.year.localeCompare(a.year));
+        setSeasons(normalizedSeasons);
       } catch (err) {
         console.error("Failed to fetch project or season data:", err);
-        setError("Could not load project data. Please try again later.");
+        setError(err?.message || "Could not load project data. Please try again later.");
       } finally {
         setIsFetchingData(false);
       }

@@ -4,36 +4,17 @@ import { MapPin, Calendar } from "lucide-react";
 
 const ProjectCard = ({ project }) => {
   return (
-<div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow h-full flex flex-col">
-{/* Image at the top */}
-      {project.image ? (
-        <div className="relative h-48 w-full">
-          <img
-            src={project.image}
-            alt={project.name}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      ) : (
-        <div className="bg-gray-200 h-48 flex items-center justify-center">
-          <p className="text-gray-500">No image available</p>
-        </div>
-      )}
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow h-full flex flex-col">
+      <div className="p-4 flex flex-col gap-3 flex-1">
+        <h3 className="font-medium text-lg text-gray-900">{project.name}</h3>
 
-      {/* Content below the image */}
-      <div className="p-4 flex flex-col flex-1">
-
-        <h3 className="font-medium text-lg mb-2">{project.name}</h3>
-
-        {/* Address */}
-        <div className="flex items-center text-gray-500 text-sm mb-2">
-          <MapPin className="w-4 h-4 mr-1" />
+        <div className="flex items-center text-gray-500 text-sm">
+          <MapPin className="w-4 h-4 mr-2" />
           <span>{project.address || "No address provided"}</span>
         </div>
 
-        {/* Start Date */}
-        <div className="flex items-center text-gray-500 text-sm mb-3">
-          <Calendar className="w-4 h-4 mr-1" />
+        <div className="flex items-center text-gray-500 text-sm">
+          <Calendar className="w-4 h-4 mr-2" />
           <span>
             {project.startDate
               ? new Date(project.startDate).toLocaleDateString(undefined, {
@@ -45,18 +26,18 @@ const ProjectCard = ({ project }) => {
           </span>
         </div>
 
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-  {project.description}
-</p>
+        {project.description && (
+          <p className="text-gray-600 text-sm line-clamp-2">{project.description}</p>
+        )}
 
-<div className="mt-auto">
-  <Link
-    to={`/admin/project/${project.id}`}
-    className="inline-block px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-  >
-    View Details
-  </Link>
-</div>
+        <div className="pt-2 mt-auto">
+          <Link
+            to={`/admin/project/${project.id}`}
+            className="inline-block px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+          >
+            View Details
+          </Link>
+        </div>
       </div>
     </div>
   );
