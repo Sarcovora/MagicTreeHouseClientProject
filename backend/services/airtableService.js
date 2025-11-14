@@ -509,6 +509,7 @@ const deleteSeasonOption = async (seasonName) => {
                 500
             );
         }
+        console.log(`Season field metadata:`, JSON.stringify(seasonField.options, null, 2));
     } catch (error) {
         if (error.statusCode) {
             throw error;
@@ -531,32 +532,42 @@ const deleteSeasonOption = async (seasonName) => {
         );
     }
 
-    const remainingChoices = existingChoices.filter(choice => choice.id !== targetChoice.id);
+    const originalChoices = Array.isArray(seasonField.options?.choices)
+        ? seasonField.options.choices
+        : [];
 
-    const existingChoiceOrder = seasonField.options?.choiceOrder;
-    const updatedChoiceOrder = Array.isArray(existingChoiceOrder)
-        ? existingChoiceOrder.filter(choiceId => choiceId !== targetChoice.id && remainingChoices.some(choice => choice.id === choiceId))
-        : existingChoiceOrder;
+    const remainingChoices = originalChoices;
 
-    const {
-        choices: _ignoredChoices,
-        choiceOrder: _ignoredChoiceOrder,
-        ...restOptions
-    } = seasonField.options || {};
+    const updatedOptions = JSON.parse(JSON.stringify(seasonField.options || {}));
+    updatedOptions.choices = remainingChoices.map(choice => ({ ...choice }));
 
-    const updatedOptions = {
-        ...restOptions,
-        choices: remainingChoices,
-    };
-
-    if (updatedChoiceOrder) {
-        updatedOptions.choiceOrder = updatedChoiceOrder;
+    if (Array.isArray(updatedOptions.choiceOrder)) {
+        updatedOptions.choiceOrder = updatedOptions.choiceOrder.filter(choiceId => choiceId !== targetChoice.id);
+        if (updatedOptions.choiceOrder.length === 0) {
+            delete updatedOptions.choiceOrder;
+        }
     }
 
+    console.log(
+        `Updated season options payload (removing '${trimmedSeason}'):`,
+        JSON.stringify(updatedOptions, null, 2)
+    );
+
     try {
-        await metadataApi.patch(`/tables/${targetTable.id}/fields/${seasonField.id}`, {
-            type: seasonField.type,
-            options: updatedOptions,
+        await metadataApi.patch(`/tables/${targetTable.id}`, {
+            fields: targetTable.fields.map(field => {
+                if (field.id === seasonField.id) {
+                    return {
+                        id: field.id,
+                        name: field.name,
+                        type: field.type,
+                        description: field.description ?? null,
+                        options: updatedOptions,
+                    };
+                }
+                // No changes for other fields
+                return { id: field.id };
+            }),
         });
 
         console.log(`Season option '${trimmedSeason}' removed from Airtable.`);
@@ -567,12 +578,14 @@ const deleteSeasonOption = async (seasonName) => {
         };
     } catch (error) {
         console.error(`Error removing season option '${trimmedSeason}':`, error.response?.data || error.message);
-        const responseMessage = error.response?.data?.message;
+        const responseMessage =
+            error.response?.data?.message ||
+            error.response?.data?.error?.message ||
+            error.response?.data?.error?.type;
+        const detailedMessage = responseMessage || error.message;
         throw createServiceError(
-            responseMessage
-                ? `Failed to delete season option '${trimmedSeason}': ${responseMessage}`
-                : `Failed to delete season option '${trimmedSeason}': ${error.message}`,
-            500
+            `Failed to delete season option '${trimmedSeason}': ${detailedMessage}`,
+            error.response?.status || 500
         );
     }
 };
