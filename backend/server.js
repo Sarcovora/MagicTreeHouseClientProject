@@ -2,15 +2,24 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const airtableRoutes = require('./routes/airtableRoutes'); // We'll create this next
 
 const app = express();
 const PORT = process.env.PORT || 3000; // Use environment port or default
 
+// --- Uploads directory ---
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // --- Middleware ---
 app.use(cors()); // Allow requests from different origins (like your frontend)
-app.use(express.json()); // Parse incoming JSON requests
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded requests
+app.use(express.json({ limit: '15mb' })); // Parse incoming JSON requests
+app.use(express.urlencoded({ extended: true, limit: '15mb' })); // Parse URL-encoded requests
+app.use('/uploads', express.static(uploadsDir));
 
 // --- Logging Middleware (Optional but helpful) ---
 app.use((req, res, next) => {

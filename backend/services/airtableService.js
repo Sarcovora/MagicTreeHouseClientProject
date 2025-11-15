@@ -60,6 +60,8 @@ const FIELD_MAP = {
         plantingPhotos: 'Planting Photos',
         propertyImages: 'Property Images',
         participationStatus: 'Participation status',
+        carbonDocs: 'Carbon docs (notarized)',
+        postPlantingReports: 'Post-Planting Reports',
     },
     // Input: Airtable Field Name or ID -> Output: API Key
     airtableToApi: {
@@ -94,7 +96,16 @@ const FIELD_MAP = {
         'Participation status': 'participationStatus',
         'Quiz Score - Pre-consult': 'quizScorePreConsultation',
         'Quiz Score - Post-planting': 'quizScorePostPlanting',
+        'Carbon docs (notarized)': 'carbonDocs',
+        'Post-Planting Reports': 'postPlantingReports',
     }
+};
+
+const DOCUMENT_FIELD_MAP = {
+    carbonDocs: FIELD_MAP.apiToAirtable.carbonDocs || 'Carbon docs (notarized)',
+    draftMap: FIELD_MAP.apiToAirtable.draftMap || 'Draft Map',
+    finalMap: FIELD_MAP.apiToAirtable.finalMap || 'Final Map',
+    postPlantingReports: FIELD_MAP.apiToAirtable.postPlantingReports || 'Post-Planting Reports',
 };
 
 // --- Helper Function to Process Records (Keep as is) ---
@@ -536,14 +547,25 @@ const deleteSeasonOption = async (seasonName) => {
         ? seasonField.options.choices
         : [];
 
-    const remainingChoices = originalChoices;
-
+    // Deep clone the entire options object so we preserve Airtable-specific flags.
     const updatedOptions = JSON.parse(JSON.stringify(seasonField.options || {}));
-    updatedOptions.choices = remainingChoices.map(choice => ({ ...choice }));
 
+    // Remove the target choice while preserving id/name/color/icon/etc.
+    updatedOptions.choices = originalChoices
+        .filter(choice => choice.id !== targetChoice.id)
+        .map(choice => ({ ...choice }));
+
+    if (updatedOptions.choices.length !== originalChoices.length - 1) {
+        throw createServiceError(
+            `Failed to prepare updated options for season '${trimmedSeason}'.`,
+            500
+        );
+    }
+
+    // Remove the choice from choiceOrder if Airtable has it defined.
     if (Array.isArray(updatedOptions.choiceOrder)) {
         updatedOptions.choiceOrder = updatedOptions.choiceOrder.filter(choiceId => choiceId !== targetChoice.id);
-        if (updatedOptions.choiceOrder.length === 0) {
+        if (!updatedOptions.choiceOrder.length) {
             delete updatedOptions.choiceOrder;
         }
     }
@@ -554,20 +576,20 @@ const deleteSeasonOption = async (seasonName) => {
     );
 
     try {
+        const metadataPayload = {
+            name: seasonField.name,
+            type: seasonField.type,
+            description: seasonField.description ?? undefined,
+            options: updatedOptions,
+        };
+        console.log('Metadata PATCH payload:', JSON.stringify({ fields: [metadataPayload] }, null, 2));
         await metadataApi.patch(`/tables/${targetTable.id}`, {
-            fields: targetTable.fields.map(field => {
-                if (field.id === seasonField.id) {
-                    return {
-                        id: field.id,
-                        name: field.name,
-                        type: field.type,
-                        description: field.description ?? null,
-                        options: updatedOptions,
-                    };
-                }
-                // No changes for other fields
-                return { id: field.id };
-            }),
+            fields: [
+                {
+                    id: seasonField.id,
+                    ...metadataPayload,
+                },
+            ],
         });
 
         console.log(`Season option '${trimmedSeason}' removed from Airtable.`);
@@ -577,16 +599,56 @@ const deleteSeasonOption = async (seasonName) => {
             message: `Season option '${trimmedSeason}' removed from Airtable.`,
         };
     } catch (error) {
-        console.error(`Error removing season option '${trimmedSeason}':`, error.response?.data || error.message);
+        const responseData = error.response?.data;
+        console.error(`Error removing season option '${trimmedSeason}':`, responseData || error.message);
         const responseMessage =
-            error.response?.data?.message ||
-            error.response?.data?.error?.message ||
-            error.response?.data?.error?.type;
-        const detailedMessage = responseMessage || error.message;
+            responseData?.message ||
+            responseData?.error?.message ||
+            responseData?.error?.type;
+        const detailedMessage = responseMessage
+            ? `${responseMessage} | full payload: ${JSON.stringify(responseData)}`
+            : error.message;
         throw createServiceError(
             `Failed to delete season option '${trimmedSeason}': ${detailedMessage}`,
             error.response?.status || 500
         );
+    }
+};
+
+const attachDocumentToProject = async (recordId, documentType, attachment) => {
+    const fieldName = DOCUMENT_FIELD_MAP[documentType];
+    if (!fieldName) {
+        throw createServiceError(`Unsupported document type '${documentType}'.`, 400);
+    }
+    if (!attachment?.url) {
+        throw createServiceError('Attachment URL is required.', 400);
+    }
+
+    try {
+        const updatePayload = [{
+            id: recordId,
+            fields: {
+                [fieldName]: [
+                    {
+                        url: attachment.url,
+                        filename: attachment.filename,
+                        contentType: attachment.contentType,
+                    },
+                ],
+            },
+        }];
+
+        const updatedRecords = await table.update(updatePayload, { typecast: true });
+        if (!updatedRecords || updatedRecords.length === 0) {
+            throw new Error('Record update failed, no record returned.');
+        }
+        return processRecord(updatedRecords[0]);
+    } catch (error) {
+        console.error(`Error attaching document (${documentType}) to record ${recordId}:`, error);
+        if (error.statusCode) {
+            throw error;
+        }
+        throw createServiceError(error.message || 'Failed to attach document to project.');
     }
 };
 
@@ -600,4 +662,5 @@ module.exports = {
     addProject,
     updateProject,
     deleteSeasonOption,
+    attachDocumentToProject,
 };

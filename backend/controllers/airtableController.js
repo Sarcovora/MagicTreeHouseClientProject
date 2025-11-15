@@ -1,5 +1,15 @@
 // controllers/airtableController.js
+const fs = require('fs');
+const path = require('path');
 const airtableService = require('../services/airtableService');
+
+const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+const sanitizeFilename = (name = 'document') =>
+    name.replace(/[^a-z0-9.\-_]/gi, '_');
 
 // Helper for handling async route errors
 const asyncHandler = fn => (req, res, next) => {
@@ -132,6 +142,51 @@ const handleDeleteSeason = asyncHandler(async (req, res) => {
     }
 });
 
+const handleUploadProjectDocument = asyncHandler(async (req, res) => {
+    const { recordId } = req.params;
+    const { documentType, filename, contentType, data } = req.body || {};
+
+    if (!recordId) {
+        return res.status(400).json({ message: 'Record ID parameter is required.' });
+    }
+    if (!documentType) {
+        return res.status(400).json({ message: 'documentType is required.' });
+    }
+    if (!data) {
+        return res.status(400).json({ message: 'File data is required.' });
+    }
+
+    const safeName = sanitizeFilename(filename || `${documentType}-${Date.now()}`);
+    const storedFileName = `${Date.now()}-${safeName}`;
+    const filePath = path.join(UPLOADS_DIR, storedFileName);
+
+    try {
+        const buffer = Buffer.from(data, 'base64');
+        fs.writeFileSync(filePath, buffer);
+
+        const baseUrl =
+            (process.env.FILE_UPLOAD_BASE_URL && process.env.FILE_UPLOAD_BASE_URL.replace(/\/$/, '')) ||
+            `${req.protocol}://${req.get('host')}`;
+        const publicUrl = `${baseUrl}/uploads/${storedFileName}`;
+
+        const updatedProject = await airtableService.attachDocumentToProject(recordId, documentType, {
+            url: publicUrl,
+            filename: filename || storedFileName,
+            contentType: contentType || undefined,
+        });
+
+        res.json({
+            success: true,
+            documentType,
+            fileUrl: publicUrl,
+            project: updatedProject,
+        });
+    } catch (error) {
+        console.error(`Controller error uploading document for ${recordId}:`, error);
+        res.status(500).json({ message: error.message || 'Failed to upload project document.' });
+    }
+});
+
 module.exports = {
     handleGetAllSeasons,
     handleGetProjectsBySeason,
@@ -140,4 +195,5 @@ module.exports = {
     handleAddProject,
     handleUpdateProject,
     handleDeleteSeason,
+    handleUploadProjectDocument,
 };

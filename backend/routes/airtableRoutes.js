@@ -31,5 +31,7 @@ router.post('/projects', airtableController.handleAddProject);
 // Corresponds to: UpdateProject(recordId, projectData)
 router.patch('/projects/:recordId', airtableController.handleUpdateProject);
 
+// Upload/replace a project document (attachments)
+router.post('/projects/:recordId/documents', airtableController.handleUploadProjectDocument);
 
 module.exports = router;
