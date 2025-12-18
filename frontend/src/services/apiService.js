@@ -10,11 +10,9 @@
 *   - getAllProjects       → Aggregates the above
 *   - getProjectDetails    → GET /api/projects/details/:recordId
  *   - addSeason            → POST /api/seasons
- *
- * MOCK DATA (until matching backend endpoints exist)
- * -------------------------------------------------
- *   - addSeason, addProject, updateProject, deleteProject, getUserProfile, etc.
- *     These still return local fixtures and log when used.
+ * MOCK DATA (temporary fallbacks while endpoints come online)
+ * -----------------------------------------------------------
+ *   - Document library helpers, forms, and user profile still use static mocks.
  */
 
 import axios from 'axios';
@@ -26,7 +24,7 @@ const apiBaseFromEnv = (import.meta?.env?.VITE_API_BASE_URL || DEFAULT_API_BASE)
 const apiPrefix = import.meta?.env?.VITE_API_PREFIX ?? '/api';
 const apiClient = axios.create({
   baseURL: `${apiBaseFromEnv}${apiPrefix}`,
-  timeout: 10000,
+  timeout: 45000,
 });
 
 apiClient.interceptors.request.use(async (config) => {
@@ -42,112 +40,26 @@ apiClient.interceptors.request.use(async (config) => {
   return config;
 });
 
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === "string") {
+        const base64 = result.split(",").pop();
+        resolve(base64 || "");
+      } else {
+        reject(new Error("Unable to read file as base64."));
+      }
+    };
+    reader.onerror = () => {
+      reject(new Error("Failed to read file for upload."));
+    };
+    reader.readAsDataURL(file);
+  });
 // --- Mock Data ---
 
-const mockProjects = [
-    {
-      id: 1,
-      seasonYear: "2023", // Added field to link project to season
-      name: "ABCD Park",
-      landowner: "John Doe",
-      location: "California", // General location
-      address: "Bee Caves, Austin TX", // Specific address
-      image: "/images/project-images/abcd_park.jpg", // Corrected path based on file structure
-      contact: {
-        phone: "+1 234 567 8900",
-        email: "john@example.com",
-      },
-      metrics: {
-        canopyGrowth: "15% increase",
-        biodiversity: "24 species",
-        carbonOffset: "150 tons",
-        treesSurvival: "92%",
-      },
-      description:
-        "A comprehensive reforestation project aimed at restoring native woodland...",
-      status: "Active",
-      startDate: "2023-01-15",
-    },
-    {
-      id: 2,
-      seasonYear: "2023", // Added field
-      name: "Forest Revival",
-      landowner: "Jane Smith",
-      location: "Oregon",
-      address: "2100 Nueces St, Austin TX",
-      image: "/images/project-images/forest_revival.jpg", // Corrected path
-      contact: {
-        phone: "+1 345 678 9012",
-        email: "jane@example.com",
-      },
-      metrics: {
-        canopyGrowth: "22% increase",
-        biodiversity: "31 species",
-        carbonOffset: "180 tons",
-        treesSurvival: "88%",
-      },
-      description:
-        "A project focused on reviving forest ecosystems in the Pacific Northwest...",
-      status: "Active",
-      startDate: "2023-03-10",
-    },
-    {
-      id: 3,
-      seasonYear: "2022", // Added field
-      name: "Green Future",
-      landowner: "Bob Wilson",
-      location: "Washington",
-      address: "123 Rio Grande St, Austin TX",
-      image: "/images/project-images/green_future.jpeg", // Corrected path
-      contact: {
-        phone: "+1 456 789 0123",
-        email: "bob@example.com",
-      },
-      metrics: {
-        canopyGrowth: "18% increase",
-        biodiversity: "27 species",
-        carbonOffset: "130 tons",
-        treesSurvival: "95%",
-      },
-      description:
-        "An innovative approach to urban reforestation in Washington state...",
-      status: "Completed", // Changed status for variety
-      startDate: "2022-05-20", // Adjusted start date
-    },
-    {
-      id: 4,
-      seasonYear: "2024", // Added field
-      name: "Oak Hill Preservation",
-      landowner: "Alice Green",
-      location: "Texas",
-      address: "456 Preservation Way, Austin TX",
-      image: null, // Example project without an image
-      contact: {
-          phone: "+1 555 111 2222",
-          email: "alice@example.com",
-      },
-      metrics: {
-          canopyGrowth: "N/A",
-          biodiversity: "N/A",
-          carbonOffset: "N/A",
-          treesSurvival: "N/A",
-      },
-      description: "A newly initiated project focused on preserving oak trees.",
-      status: "Pending",
-      startDate: "2024-07-01",
-    },
-  ];
-  
-  const mockSeasons = [
-    { id: 1, year: "2024", projectCount: mockProjects.filter(p => p.seasonYear === "2024").length },
-    { id: 2, year: "2023", projectCount: mockProjects.filter(p => p.seasonYear === "2023").length },
-    { id: 3, year: "2022", projectCount: mockProjects.filter(p => p.seasonYear === "2022").length },
-    { id: 4, year: "2021", projectCount: 0 },
-    { id: 5, year: "2020", projectCount: 0 },
-    { id: 6, year: "2019", projectCount: 0 },
-  ];
-  
-  let mockDocuments = [
+let mockDocuments = [
       {
           id: 'doc1',
           title: 'Property Map - Site A',
@@ -214,14 +126,14 @@ const mockProjects = [
           localFilePath: 'documents/Photos/1678886400000_volunteer_day.png'
       },
   ];
-  
+
   const mockMapComments = {
       'doc1': [ // Assuming 'doc1' is the ID of the map 'Property Map - Site A'
           { id: 'c1', mapId: 'doc1', x: 25.5, y: 40.2, text: 'Possible erosion point here.', author: 'Admin', timestamp: new Date('2024-01-15T10:30:00Z') },
           { id: 'c2', mapId: 'doc1', x: 60.0, y: 75.8, text: 'Dense undergrowth, needs clearing before planting.', author: 'John Doe', timestamp: new Date('2024-01-16T14:00:00Z') },
       ],
   };
-  
+
   const mockUser = {
       id: 'user123',
       name: 'John Doe',
@@ -235,10 +147,14 @@ const mockProjects = [
 const simulateDelay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 
 const seasonProjectsCache = new Map(); // Map<string, Array<NormalizedProject>>
+const fullyLoadedSeasons = new Set(); // Tracks which seasons have a complete project list cached
 
 const resetSeasonProjectsCache = () => {
   seasonProjectsCache.clear();
+  fullyLoadedSeasons.clear();
 };
+
+const normalizeSeasonKey = (value) => String(value ?? '').trim();
 
 const getCachedProject = (projectId) => {
   for (const projects of seasonProjectsCache.values()) {
@@ -285,14 +201,13 @@ const normalizeProjectRecord = (record = {}, { seasonYear } = {}) => {
     record.finalMapUrl ??
     null;
 
-  const name =
-    record.name ??
+  const displayNameCandidate =
     record.title ??
     record.ownerDisplayName ??
     record.ownerFullName ??
     record.ownerFirstName ??
-    record.uniqueId ??
-    'Untitled Project';
+    record.landowner ??
+    undefined;
 
   const landowner =
     record.landowner ??
@@ -301,10 +216,23 @@ const normalizeProjectRecord = (record = {}, { seasonYear } = {}) => {
     record.ownerFirstName ??
     'N/A';
 
+  const fallbackIdBase =
+    record.uniqueId ??
+    displayNameCandidate ??
+    record.propertyId ??
+    record.siteNumber ??
+    'project';
+
+  const documentLinks = {
+    carbonDocs: toArray(record.carbonDocs),
+    draftMap: toArray(record.draftMapUrl),
+    finalMap: toArray(record.finalMapUrl),
+    postPlantingReports: toArray(record.postPlantingReports),
+  };
+
   return {
-    id: record.id ?? record.uniqueId ?? `${name}-${computedSeasonYear}`,
+    id: record.id ?? record.uniqueId ?? `${fallbackIdBase}-${computedSeasonYear || 'unknown'}`,
     seasonYear: computedSeasonYear,
-    name,
     landowner,
     location: record.location ?? record.city ?? '',
     address: record.address ?? '',
@@ -325,28 +253,41 @@ const normalizeProjectRecord = (record = {}, { seasonYear } = {}) => {
     beforePhotoUrls: toArray(record.beforePhotoUrls),
     plantingPhotoUrls: toArray(record.plantingPhotoUrls),
     propertyImageUrls: toArray(record.propertyImageUrls),
+    activeCarbonShapefiles: toArray(record.activeCarbonShapefiles),
+    wetlandAcres: record.wetlandAcres ?? "",
+    uplandAcres: record.uplandAcres ?? "",
+    totalAcres: record.totalAcres ?? "",
+    wetlandTrees: record.wetlandTrees ?? "",
+    uplandTrees: record.uplandTrees ?? "",
+    totalTrees: record.totalTrees ?? "",
     status: record.status ?? 'Unknown',
-    startDate: record.startDate ?? record.plantingDate ?? record.applicationDate ?? '',
+    documents: documentLinks,
     raw: record.raw ?? record,
   };
 };
 
 const fetchProjectsBySeasonFromApi = async (seasonYear, { useCache = true } = {}) => {
-  if (!seasonYear) {
+  const normalizedSeason = normalizeSeasonKey(seasonYear);
+  if (!normalizedSeason) {
     return [];
   }
 
-  if (useCache && seasonProjectsCache.has(seasonYear)) {
-    return seasonProjectsCache.get(seasonYear);
+  if (useCache && fullyLoadedSeasons.has(normalizedSeason) && seasonProjectsCache.has(normalizedSeason)) {
+    return seasonProjectsCache.get(normalizedSeason);
   }
 
-  const response = await apiClient.get(`/projects/season/${encodeURIComponent(seasonYear)}`);
+  const response = await apiClient.get(`/projects/season/${encodeURIComponent(normalizedSeason)}`);
   const records = Array.isArray(response.data) ? response.data : [];
   const normalizedProjects = records.map(record =>
-    normalizeProjectRecord({ ...record, seasonYear: record.season ?? seasonYear }, { seasonYear })
+    normalizeProjectRecord({ ...record, seasonYear: record.season ?? normalizedSeason }, { seasonYear: normalizedSeason })
   );
 
-  seasonProjectsCache.set(seasonYear, normalizedProjects);
+  seasonProjectsCache.set(normalizedSeason, normalizedProjects);
+  if (normalizedProjects.length > 0) {
+    fullyLoadedSeasons.add(normalizedSeason);
+  } else {
+    fullyLoadedSeasons.delete(normalizedSeason);
+  }
   return normalizedProjects;
 };
 
@@ -407,15 +348,17 @@ export const getAllProjects = async () => {
   }
 };
 
-export const getProjectsBySeason = async (seasonYear) => {
-  if (!seasonYear) {
+export const getProjectsBySeason = async (seasonYear, { forceFresh = false } = {}) => {
+  const normalizedSeason = normalizeSeasonKey(seasonYear);
+  if (!normalizedSeason) {
     return [];
   }
 
   try {
-    return await fetchProjectsBySeasonFromApi(seasonYear, { useCache: true });
+    const useCache = !forceFresh;
+    return await fetchProjectsBySeasonFromApi(normalizedSeason, { useCache });
   } catch (error) {
-    console.error(`API Call: getProjectsBySeason(${seasonYear}) -> Failed.`, error);
+    console.error(`API Call: getProjectsBySeason(${normalizedSeason}) -> Failed.`, error);
     throw new Error(
       error?.response?.data?.message ||
       error?.message ||
@@ -430,7 +373,7 @@ export const getProjectDetails = async (projectId) => {
   }
 
   const cachedProject = getCachedProject(projectId);
-  if (cachedProject) {
+  if (cachedProject && cachedProject.wetlandAcres !== undefined) {
     return cachedProject;
   }
 
@@ -442,9 +385,10 @@ export const getProjectDetails = async (projectId) => {
 
     const normalized = normalizeProjectRecord(response.data);
     if (normalized.seasonYear) {
-      const existing = seasonProjectsCache.get(normalized.seasonYear) || [];
+      const seasonKey = normalizeSeasonKey(normalized.seasonYear);
+      const existing = seasonProjectsCache.get(seasonKey) || [];
       if (!existing.some(project => `${project.id}` === `${normalized.id}`)) {
-        seasonProjectsCache.set(normalized.seasonYear, [...existing, normalized]);
+        seasonProjectsCache.set(seasonKey, [...existing, normalized]);
       }
     }
 
@@ -487,75 +431,125 @@ export const addSeason = async (seasonYear) => {
   }
 };
 
-// --- MOCKED / LEGACY FUNCTIONS ---------------------------------------------
-  export const addProject = async (projectData) => {
-      await simulateDelay();
-      const newProject = {
-          id: Date.now(), // simple unique ID
-          ...projectData,
-          // Ensure required fields like image are handled (e.g., set to null if not provided)
-          image: projectData.image || null,
-          // Add default metrics/contact if needed
-      metrics: projectData.metrics || { canopyGrowth: "N/A", biodiversity: "N/A", carbonOffset: "N/A", treesSurvival: "N/A"},
-      contact: projectData.contact || { phone: "N/A", email: "N/A"},
-    };
-      mockProjects.push(newProject);
-  
-      // Update project count for the relevant season
-      const seasonIndex = mockSeasons.findIndex(s => s.year === newProject.seasonYear);
-      if (seasonIndex !== -1) {
-          mockSeasons[seasonIndex].projectCount++;
-      } else {
-          console.warn(`Season ${newProject.seasonYear} not found for new project. Updating mock cache only.`);
-          mockSeasons.push({
-              id: Date.now(),
-              year: newProject.seasonYear,
-              projectCount: 1,
-          });
-      }
-  
-      console.log("API Call: addProject -> New Project:", newProject);
-      return { ...newProject };
-  };
-  
-  export const updateProject = async (projectId, projectData) => {
-      await simulateDelay();
-      const idToUpdate = parseInt(projectId, 10);
-      const projectIndex = mockProjects.findIndex(p => p.id === idToUpdate);
-      if (projectIndex !== -1) {
-          mockProjects[projectIndex] = {
-              ...mockProjects[projectIndex],
-              ...projectData,
-          };
-          console.log(`API Call: updateProject(${projectId}) -> Updated Project:`, mockProjects[projectIndex]);
-          return { ...mockProjects[projectIndex] }; // Return copy
-      }
-      console.error(`API Call: updateProject(${projectId}) -> Project not found`);
+// --- MUTATING PROJECT OPERATIONS (REAL API) ---------------------------------
+
+export const addProject = async (projectData) => {
+  if (!projectData || typeof projectData !== 'object') {
+    throw new Error('Project data is required to create a project.');
+  }
+
+  try {
+    const response = await apiClient.post('/projects', projectData);
+    resetSeasonProjectsCache();
+
+    if (!response?.data) {
       return null;
-  };
-  
-  export const deleteProject = async (projectId) => {
-      await simulateDelay();
-      const idToDelete = parseInt(projectId, 10);
-      const projectIndex = mockProjects.findIndex(p => p.id === idToDelete);
-      if (projectIndex !== -1) {
-          const deletedProject = mockProjects.splice(projectIndex, 1)[0];
-  
-          // Update project count for the relevant season
-          const seasonIndex = mockSeasons.findIndex(s => s.year === deletedProject.seasonYear);
-          if (seasonIndex !== -1 && mockSeasons[seasonIndex].projectCount > 0) {
-              mockSeasons[seasonIndex].projectCount--;
-          }
-  
-          console.log(`API Call: deleteProject(${projectId}) -> Success`);
-          return { success: true };
-      }
-      console.error(`API Call: deleteProject(${projectId}) -> Project not found`);
-      return { success: false };
-  };
-  
-  
-  
+    }
+
+    const normalized = normalizeProjectRecord(response.data, {
+      seasonYear: projectData.seasonYear || projectData.season,
+    });
+
+    return normalized;
+  } catch (error) {
+    console.error('API Call: addProject -> Failed.', error);
+    throw new Error(
+      error?.response?.data?.message ||
+      error?.message ||
+      'Failed to create project.'
+    );
+  }
+};
+
+export const updateProject = async (projectId, projectData) => {
+  if (!projectId) {
+    throw new Error('Project ID is required to update a project.');
+  }
+  if (!projectData || typeof projectData !== 'object' || Object.keys(projectData).length === 0) {
+    throw new Error('Project update payload must include at least one field.');
+  }
+
+  try {
+    const response = await apiClient.patch(`/projects/${encodeURIComponent(projectId)}`, projectData);
+    resetSeasonProjectsCache();
+
+    if (!response?.data) {
+      return null;
+    }
+
+    return normalizeProjectRecord(response.data);
+  } catch (error) {
+    console.error(`API Call: updateProject(${projectId}) -> Failed.`, error);
+    throw new Error(
+      error?.response?.data?.message ||
+      error?.message ||
+      `Failed to update project ${projectId}.`
+    );
+  }
+};
+
+export const deleteProject = async (projectId) => {
+  if (!projectId) {
+    throw new Error('Project ID is required to delete a project.');
+  }
+
+  try {
+    const response = await apiClient.delete(`/projects/${encodeURIComponent(projectId)}`);
+    resetSeasonProjectsCache();
+
+    return response?.data ?? { success: true };
+  } catch (error) {
+    console.error(`API Call: deleteProject(${projectId}) -> Failed.`, error);
+    throw new Error(
+      error?.response?.data?.message ||
+      error?.message ||
+      `Failed to delete project ${projectId}.`
+    );
+  }
+};
+
+export const uploadProjectDocument = async (projectId, documentType, file) => {
+  if (!projectId) {
+    throw new Error('Project ID is required to upload a document.');
+  }
+  if (!documentType) {
+    throw new Error('Document type is required.');
+  }
+  if (!file) {
+    throw new Error('A file must be provided.');
+  }
+
+  try {
+    const base64Data = await fileToBase64(file);
+    const payload = {
+      documentType,
+      filename: file.name,
+      contentType: file.type || 'application/octet-stream',
+      data: base64Data,
+    };
+
+    const response = await apiClient.post(
+      `/projects/${encodeURIComponent(projectId)}/documents`,
+      payload
+    );
+
+    resetSeasonProjectsCache();
+    return response?.data ?? null;
+  } catch (error) {
+    console.error(
+      `API Call: uploadProjectDocument(${projectId}, ${documentType}) -> Failed.`,
+      error
+    );
+    throw new Error(
+      error?.response?.data?.message ||
+        error?.message ||
+        'Failed to upload project document.'
+    );
+  }
+};
+
+
+
 export const deleteSeason = async (seasonId) => {
   const normalizedId = String(seasonId ?? "").trim();
   if (!normalizedId) {
@@ -614,14 +608,14 @@ export const deleteSeason = async (seasonId) => {
       console.log(`API Call: getFormDetails(${formId}) -> Returning:`, mockForm);
       return mockForm;
   };
-  
+
   export const getUserProfile = async () => {
       await simulateDelay(100); // Faster delay for user profile
       console.log("API Call: getUserProfile -> Returning:", mockUser);
       return { ...mockUser }; // Return copy
   }
-  
-  
+
+
   // Export all functions
 const apiService = {
     getSeasons,
@@ -632,9 +626,10 @@ const apiService = {
     addProject,
     updateProject,
     deleteProject,
+    uploadProjectDocument,
     deleteSeason, // Add deleteSeason here
   getFormDetails,
     getUserProfile,
   };
-  
+
   export default apiService;

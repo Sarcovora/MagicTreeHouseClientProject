@@ -12,7 +12,6 @@ Im creating a website for an organization. Here are the problems with the websit
 
 - Examples
     - GetLandownerInformation() ⇒ returns a json with name, contact, username, phone number, etc.
-    - GetProjectStatus() ⇒ {active: bool (true/false), startDate: 2/24/18, endDate: 2/24/19)
     - GetAllSeason() ⇒ returns json with all valid seasons (e.g. 24-25, 25-26)
     - GetProjectsForSeason(”24-25”) ⇒ returns json like
     - {
@@ -37,7 +36,7 @@ but right now i havent actually written much in the backend. the main thing is t
 - Again, all this information here should be easily retreived from a backend hook in services.js. be sure to change it.
 - A lot of the buttons aren't clickable nor do the functionality they imply. I will now give you a series of button functioanlities you should implemenet in the following orer. try to reuse code and keep modularity in mind so you dont duplicate too much code
 - add new folder does nothing but should allow you to add a folder. the only parameter needs to be year (2024-2025). a scrollbar for selecting year should be fine
-- add new project doesnt do anything. it should give a form that allows you to upload an image (showing one of the images i show now is completely fine, as we will tackle the image problem later. try to make it easy however to change the way we retrieve the image as this will likely be hardcoded but changed to pull from supabase later), then all the relevant data displayed in the closer view of the card. e.g. title of project, landowner information (name, email, phone), project status (status (active/inactive), startDate, endDate), project description, project address, key metrics. in essence, we need to add the same data we are reading. 
+- add new project doesnt do anything. it should give a form that allows you to upload an image (showing one of the images i show now is completely fine, as we will tackle the image problem later. try to make it easy however to change the way we retrieve the image as this will likely be hardcoded but changed to pull from supabase later), then all the relevant data displayed in the closer view of the card. e.g. title of project, landowner information (name, email, phone), project status (status (active/inactive)), project description, project address, key metrics. in essence, we need to add the same data we are reading. 
 - the attach new document doesn't actually do anything. make it attach a new document. it is fine for now if the document is always the same. but, it should look like a generic api call from the frotnend so i can easily change the functionality later.
 - for the landowner side, there is no actualy text to help landowners complete the steps. i want you to just provide specific text and instructions to help the landowners proceed. in my idea, the steps would include a brief blurb or description followed by check boxes (with perhaps links or a short decription) that should all be checked. only after all of the checkboxes have been filled can we proceed to the next step. 
 - we should also be able to easily remove a document. implement this functionality somehow. ALWAYS heed the generic api thing

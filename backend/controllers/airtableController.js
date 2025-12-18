@@ -1,12 +1,6 @@
 // controllers/airtableController.js
-const fs = require('fs');
-const path = require('path');
 const airtableService = require('../services/airtableService');
-
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+const cloudinaryService = require('../services/cloudinaryService');
 
 const sanitizeFilename = (name = 'document') =>
     name.replace(/[^a-z0-9.\-_]/gi, '_');
@@ -144,32 +138,70 @@ const handleUploadProjectDocument = asyncHandler(async (req, res) => {
     }
 
     const safeName = sanitizeFilename(filename || `${documentType}-${Date.now()}`);
-    const storedFileName = `${Date.now()}-${safeName}`;
-    const filePath = path.join(UPLOADS_DIR, storedFileName);
+    const cleanedContentType = contentType || 'application/octet-stream';
+
+    if (!cloudinaryService.isConfigured()) {
+        return res.status(500).json({ message: 'Cloudinary is not configured. Set CLOUDINARY_URL or cloud name/key/secret.' });
+    }
+
+    let cloudinaryAsset = null;
 
     try {
         const buffer = Buffer.from(data, 'base64');
-        fs.writeFileSync(filePath, buffer);
+        // Check if file is PDF based on detected type or extension
+        const isPdf = cleanedContentType === 'application/pdf' || (filename && filename.toLowerCase().endsWith('.pdf'));
+        const resourceType = isPdf ? 'raw' : 'auto';
 
-        const baseUrl =
-            (process.env.FILE_UPLOAD_BASE_URL && process.env.FILE_UPLOAD_BASE_URL.replace(/\/$/, '')) ||
-            `${req.protocol}://${req.get('host')}`;
-        const publicUrl = `${baseUrl}/uploads/${storedFileName}`;
-
-        const updatedProject = await airtableService.attachDocumentToProject(recordId, documentType, {
-            url: publicUrl,
-            filename: filename || storedFileName,
-            contentType: contentType || undefined,
+        cloudinaryAsset = await cloudinaryService.uploadBuffer(buffer, {
+            folder: 'project-uploads',
+            filename: safeName,
+            resource_type: resourceType,
         });
+
+        // Use public secureUrl directly (Security settings now allow PDF delivery)
+        const attachmentUrl = cloudinaryAsset.secureUrl;
+
+        const {
+            project: updatedProject,
+            apiKey: projectFieldKey,
+            attachmentUrl: finalAttachmentUrl,
+            hosted,
+        } = await airtableService.attachDocumentToProject(recordId, documentType, {
+            url: attachmentUrl,
+            filename: filename || safeName,
+            contentType: cleanedContentType,
+        });
+
+        const resolvedFieldKey = projectFieldKey || documentType;
+        const projectFieldValue = updatedProject?.[resolvedFieldKey];
+        const projectFileUrl = Array.isArray(projectFieldValue)
+            ? projectFieldValue[0]
+            : projectFieldValue;
+        const finalFileUrl = projectFileUrl || attachmentUrl || cloudinaryAsset.secureUrl;
+
+        // Give Airtable time to fetch the file before cleanup (longer for slower file types)
+        const baseDeleteDelay = Number(process.env.CLOUDINARY_DELETE_DELAY_MS || 60000);
+        const slowDeleteDelay = Number(process.env.CLOUDINARY_DELETE_DELAY_MS_SLOW || 300000);
+        const deleteDelayMs = hosted ? baseDeleteDelay : slowDeleteDelay;
+        if (cloudinaryAsset.publicId) {
+            setTimeout(() => {
+                cloudinaryService.deleteAsset(cloudinaryAsset.publicId);
+            }, deleteDelayMs);
+        }
 
         res.json({
             success: true,
             documentType,
-            fileUrl: publicUrl,
+            hosted: Boolean(hosted),
+            fileUrl: finalFileUrl,
             project: updatedProject,
         });
     } catch (error) {
         console.error(`Controller error uploading document for ${recordId}:`, error);
+        // Cleanup temp asset if Airtable failed after upload
+        if (cloudinaryAsset?.publicId) {
+            await cloudinaryService.deleteAsset(cloudinaryAsset.publicId);
+        }
         res.status(500).json({ message: error.message || 'Failed to upload project document.' });
     }
 });

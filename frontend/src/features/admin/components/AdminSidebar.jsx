@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import {
   TreePine,
   FormInput,
-  Bell,
   Map,
   LogOut,
   Settings,

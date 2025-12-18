@@ -38,6 +38,7 @@ const SeasonCard = ({ season, onDelete }) => {
 
       <Link
          to={linkPath}
+         state={{ expectedProjectCount: season.projectCount }}
          className="block focus:outline-none" // block ensures link covers card area
          aria-label={`View projects for season ${season.year}`}
         >
