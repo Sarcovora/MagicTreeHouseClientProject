@@ -1,7 +1,6 @@
 import {
   TreePine,
   FormInput,
-  Bell,
   Map,
   LogOut,
   Settings,
@@ -20,11 +19,6 @@ const LandownerSidebar = () => {
   const menuItems = [
     { icon: <TreePine size={24} />, label: "Properties", path: "/properties" },
     { icon: <FormInput size={24} />, label: "Forms", path: "/forms" },
-    {
-      icon: <Bell size={24} />,
-      label: "Notifications",
-      path: "/notifications",
-    },
     { icon: <Map size={24} />, label: "Map", path: "/map" },
     { icon: <Image size={24} />, label: "Photos", path: "/gallery" },
   ];

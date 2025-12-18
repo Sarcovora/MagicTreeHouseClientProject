@@ -3,7 +3,6 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, Link } from "react-router-dom";
 import AdminDashboard from "./features/admin/pages/AdminDashboard";
 import AdminLayout from "./features/admin/layouts/AdminLayout";
-import Notifications from "./features/admin/pages/Notifications"; // Import the new component
 import ProjectDetail from "./features/admin/pages/ProjectDetail";
 import SeasonProjectList from "./features/admin/pages/SeasonProjectList";
 import Map from "./pages/Map";
@@ -36,7 +35,6 @@ function App() {
           <Route path="project/:id/edit" element={<EditProject />} />
           {/* --- END ADD ROUTE --- */}
           <Route path="add-project" element={<AddProject />} />
-          <Route path="notifications" element={<Notifications />} />
           <Route path="map" element={<Map />} />
           <Route path="gallery" element={<PhotoGallery />} />
           <Route path="forms" element={<Forms />} />
@@ -48,8 +46,6 @@ function App() {
         <Route path="/landowner" element={<LandownerLayout />}>
            <Route index element={<Navigate to="dashboard" replace />} />
            <Route path="dashboard" element={<LandownerDashboard />} />
-            {/* Add placeholder for landowner notifications if sidebar links there */}
-            {/* <Route path="notifications" element={<LandownerNotifications />} /> */}
            <Route path="map" element={<Map />} />
            <Route path="gallery" element={<PhotoGallery />} />
            <Route path="forms" element={<Forms />} />

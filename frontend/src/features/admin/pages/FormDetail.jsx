@@ -210,7 +210,7 @@ const FormDetail = () => {
                   Include net coverage and other carbon credit growth or stats that may be associated with the specific location.
                 </p>
                 <p className="text-gray-600">
-                  This body of text can also serve as latest updates (can be imported from the notification section)
+                  This body of text can also serve as the latest updates and status changes related to the project.
                 </p>
               </div>
             </div>

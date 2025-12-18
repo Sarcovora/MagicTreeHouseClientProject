@@ -636,7 +636,7 @@ When sending data to the API (POST requests), use these field names:
 | `draftMap` | Draft Map | attachment | No* |
 | `finalMap` | Final Map | attachment | No* |
 | `plantingPhotos` | Planting Photos | attachment | No* |
-| `propertyImages` | Property Images | attachment | No* |
+| `propertyImages` | Landowner Photo Submissions | attachment | No* |
 
 *File attachments are not currently supported via the API
 

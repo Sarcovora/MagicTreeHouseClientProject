@@ -12,22 +12,48 @@ const {
     AIRTABLE_API_URL
 } = process.env;
 
+const DEFAULT_AIRTABLE_API_HOST = 'https://api.airtable.com';
+const resolveAirtableHost = (rawUrl) => {
+    if (!rawUrl) {
+        return DEFAULT_AIRTABLE_API_HOST;
+    }
+    try {
+        return new URL(rawUrl).origin;
+    } catch (error) {
+        console.warn(`Invalid AIRTABLE_API_URL "${rawUrl}", falling back to ${DEFAULT_AIRTABLE_API_HOST}`);
+        return DEFAULT_AIRTABLE_API_HOST;
+    }
+};
+
+const airtableApiHost = resolveAirtableHost(AIRTABLE_API_URL);
+
 // Configure Airtable client FOR DATA API
 Airtable.configure({
-    endpointUrl: AIRTABLE_API_URL,
+    endpointUrl: airtableApiHost,
     apiKey: AIRTABLE_PAT
 });
 
 const base = Airtable.base(AIRTABLE_BASE_ID);
 const table = base(AIRTABLE_TABLE_ID);
 
-// --- Helper for Metadata API Calls ---
+// --- Metadata API client ---
+// Airtable Metadata API base URL: https://api.airtable.com/v0/meta/bases/{baseId}
 const metadataApi = axios.create({
-    baseURL: `${AIRTABLE_API_URL}/v0/meta/bases/${AIRTABLE_BASE_ID}`,
+    baseURL: `${airtableApiHost}/v0/meta/bases/${AIRTABLE_BASE_ID}`,
+    timeout: 20000,
     headers: {
-        'Authorization': `Bearer ${AIRTABLE_PAT}`
-    }
+        Authorization: `Bearer ${AIRTABLE_PAT}`,
+    },
 });
+
+// --- Helper for Metadata API Calls ---
+const resolveAttachmentFieldName = async (documentType) => {
+    const preferred = DOCUMENT_FIELD_MAP[documentType];
+    if (!preferred) {
+        throw createServiceError(`Unsupported document type '${documentType}'.`, 400);
+    }
+    return preferred;
+};
 
 // --- Field Mappings (Keep as is, used by other functions) ---
 const FIELD_MAP = {
@@ -61,8 +87,9 @@ const FIELD_MAP = {
         initialMap: 'Initial Map',
         draftMap: 'Draft Map',
         finalMap: 'Final Map',
+        activeCarbonShapefiles: 'Active Carbon Shapefiles',
         plantingPhotos: 'Planting Photos',
-        propertyImages: 'Property Images',
+        propertyImages: 'Landowner Photo Submissions',
         participationStatus: 'Participation status',
         carbonDocs: 'Carbon docs (notarized)',
         postPlantingReports: 'Post-Planting Reports',
@@ -93,9 +120,10 @@ const FIELD_MAP = {
         'Initial Map': 'initialMapUrl',
         'Draft Map': 'draftMapUrl',
         'Final Map': 'finalMapUrl',
+        'Active Carbon Shapefiles': 'activeCarbonShapefiles',
         'Planting Photos': 'plantingPhotoUrls',
         'Before Photos': 'beforePhotoUrls',
-        'Property Images': 'propertyImageUrls',
+        'Landowner Photo Submissions': 'propertyImageUrls',
         'Land Region': 'landRegion',
         'Contact Date': 'contactDate',
         'Consultation Date': 'consultationDate',
@@ -114,6 +142,10 @@ const DOCUMENT_FIELD_MAP = {
     draftMap: FIELD_MAP.apiToAirtable.draftMap || 'Draft Map',
     finalMap: FIELD_MAP.apiToAirtable.finalMap || 'Final Map',
     postPlantingReports: FIELD_MAP.apiToAirtable.postPlantingReports || 'Post-Planting Reports',
+    plantingPhotoUrls: FIELD_MAP.apiToAirtable.plantingPhotoUrls || 'Planting Photos',
+    beforePhotoUrls: FIELD_MAP.apiToAirtable.beforePhotoUrls || 'Before Photos',
+    propertyImageUrls: FIELD_MAP.apiToAirtable.propertyImageUrls || 'Landowner Photo Submissions',
+    activeCarbonShapefiles: FIELD_MAP.apiToAirtable.activeCarbonShapefiles || 'Active Carbon Shapefiles',
 };
 
 // --- Helper Function to Process Records (Keep as is) ---
@@ -127,7 +159,7 @@ const processRecord = (record) => {
             // Handle attachments specifically: extract URL(s)
             if (Array.isArray(value) && value[0]?.url) { // Check if it looks like an attachment array
                 // Multi-image fields: always return as array
-                if (['plantingPhotoUrls', 'beforePhotoUrls', 'propertyImageUrls'].includes(apiKey)) {
+                if (['plantingPhotoUrls', 'beforePhotoUrls', 'propertyImageUrls', 'activeCarbonShapefiles'].includes(apiKey)) {
                     processed[apiKey] = value.map(att => att.url);
                 } else if (value.length === 1) {
                     // Single attachment fields: return just the URL
@@ -468,8 +500,7 @@ const updateProject = async (recordId, projectData) => {
 const normalizeSeasonName = (value = '') => {
     const dashed = String(value ?? '')
         .trim()
-        .replace(/[\u2010-\u2015]/g, '-') // normalize dash variants (en/em dash etc.)
-        .replace(/\s*-\s*/g, '-') // collapse spaces around hyphen
+        .replace(/\s*-\s*/g, '-') // enforce simple hyphen only
         .replace(/\s+/g, ' '); // collapse internal whitespace
     return dashed.toLowerCase();
 };
@@ -624,25 +655,62 @@ const deleteSeasonOption = async (seasonName) => {
 };
 
 const attachDocumentToProject = async (recordId, documentType, attachment) => {
-    const fieldName = DOCUMENT_FIELD_MAP[documentType];
-    if (!fieldName) {
-        throw createServiceError(`Unsupported document type '${documentType}'.`, 400);
-    }
+    const fieldName = await resolveAttachmentFieldName(documentType);
+    const apiKeyForField = FIELD_MAP.airtableToApi[fieldName] || documentType;
     if (!attachment?.url) {
         throw createServiceError('Attachment URL is required.', 400);
     }
 
     try {
+        const isLikelyLargeDoc = /pdf|doc|xls|ppt|zip|shp/i.test(
+            String(attachment?.contentType || attachment?.filename || '')
+        );
+        const hostWaitMs = Number(
+            process.env.AIRTABLE_ATTACHMENT_HOST_WAIT_MS ||
+            (isLikelyLargeDoc ? 20000 : 12000)
+        );
+        const shouldAppend =
+            documentType === 'plantingPhotoUrls' ||
+            documentType === 'beforePhotoUrls' ||
+            documentType === 'propertyImageUrls';
+
+        let existingAttachments = [];
+        if (shouldAppend) {
+            try {
+                const currentRecord = await table.find(recordId);
+                const currentFieldValue = currentRecord?.get(fieldName);
+                if (Array.isArray(currentFieldValue)) {
+                    existingAttachments = currentFieldValue
+                        .filter(att => att?.id)
+                        .map(att => ({ id: att.id }));
+                }
+            } catch (lookupError) {
+                throw createServiceError(
+                    lookupError?.message || `Failed to read existing attachments for '${fieldName}'.`,
+                    lookupError?.statusCode || 500
+                );
+            }
+        }
+
+        const attachmentPayload = shouldAppend
+            ? [
+                ...existingAttachments,
+                {
+                    url: attachment.url,
+                    filename: attachment.filename,
+                },
+            ]
+            : [
+                {
+                    url: attachment.url,
+                    filename: attachment.filename,
+                },
+            ];
+
         const updatePayload = [{
             id: recordId,
             fields: {
-                [fieldName]: [
-                    {
-                        url: attachment.url,
-                        filename: attachment.filename,
-                        contentType: attachment.contentType,
-                    },
-                ],
+                [fieldName]: attachmentPayload,
             },
         }];
 
@@ -650,9 +718,47 @@ const attachDocumentToProject = async (recordId, documentType, attachment) => {
         if (!updatedRecords || updatedRecords.length === 0) {
             throw new Error('Record update failed, no record returned.');
         }
-        return processRecord(updatedRecords[0]);
+        const updatedRecord = updatedRecords[0];
+
+        // For single-file fields, wait briefly for Airtable to host the attachment and return the CDN URL.
+        if (!shouldAppend) {
+            const delayMs = isLikelyLargeDoc ? 1500 : 1000;
+            const maxAttempts = Math.max(1, Math.ceil(hostWaitMs / delayMs));
+            const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const fieldValue = updatedRecord.get(fieldName);
+                const firstAttachment = Array.isArray(fieldValue) ? fieldValue[0] : null;
+                const url = firstAttachment?.url;
+                if (url && url.includes('airtableusercontent.com')) {
+                    break;
+                }
+                await wait(delayMs);
+                const latest = await table.find(recordId);
+                updatedRecord.fields = latest.fields;
+            }
+            if (maxAttempts > 1) {
+                console.log(
+                    `Attachment host wait complete for ${recordId}/${fieldName} after ${maxAttempts} attempt(s)`
+                );
+            }
+        }
+
+        const fieldValue = updatedRecord.get(fieldName);
+        const firstAttachment = Array.isArray(fieldValue) ? fieldValue[0] : null;
+        const attachmentUrl = firstAttachment?.url || null;
+        const hosted = Boolean(attachmentUrl && attachmentUrl.includes('airtableusercontent.com'));
+        const processedProject = processRecord(updatedRecord);
+
+        return {
+            project: processedProject,
+            apiKey: apiKeyForField,
+            attachmentUrl,
+            hosted,
+        };
     } catch (error) {
         console.error(`Error attaching document (${documentType}) to record ${recordId}:`, error);
+
         if (error.statusCode) {
             throw error;
         }

@@ -1,11 +1,13 @@
 // src/features/admin/pages/ProjectDetail.jsx
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
   ArrowLeft,
   Edit,
+  Loader2,
   MapPin,
+  Plus,
   Trash2,
   User,
 } from "lucide-react";
@@ -33,39 +35,234 @@ const formatDate = (value) => {
 const ensureText = (value, fallback = "Not provided") =>
   value ? String(value) : fallback;
 
+const ensureArray = (value) =>
+  Array.isArray(value) ? value.filter(Boolean) : value ? [value] : [];
+
+const getFileNameFromUrl = (url = "") => {
+  try {
+    const parsed = new URL(url);
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    return segments.pop() || parsed.hostname || "Document";
+  } catch (err) {
+    const sanitized = url.split("?")[0];
+    const segments = sanitized.split("/").filter(Boolean);
+    return segments.pop() || "Document";
+  }
+};
+
+const DOCUMENT_SLOTS = [
+  {
+    key: "carbonDocs",
+    label: "Carbon Docs (Notarized)",
+    description: "Signed documentation verifying carbon credits.",
+    fallbackField: "carbonDocs",
+  },
+  {
+    key: "draftMap",
+    label: "Draft Map",
+    description: "Latest GIS draft map uploaded for review.",
+    fallbackField: "draftMapUrl",
+  },
+  {
+    key: "finalMap",
+    label: "Final Map",
+    description: "Approved planting map for this site.",
+    fallbackField: "finalMapUrl",
+  },
+  {
+    key: "postPlantingReports",
+    label: "Post-Planting Reports",
+    description: "Reports documenting post-planting observations.",
+    fallbackField: "postPlantingReports",
+  },
+];
+
+const DocumentTile = ({ slot, files, onUpload, isUploading }) => {
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = async (event) => {
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile) {
+      await onUpload(slot.key, selectedFile);
+    }
+    event.target.value = "";
+  };
+
+  const openPicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  const inputId = `upload-${slot.key}`;
+
+  if (files.length === 0 || isUploading) {
+    return (
+      <div className="flex h-full flex-col justify-between rounded-2xl border-2 border-dashed border-green-400 bg-green-50/50 p-4 text-center">
+        <div>
+          <p className="text-sm font-semibold text-gray-800">{slot.label}</p>
+          <p className="mt-2 text-xs text-gray-500">{slot.description}</p>
+        </div>
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={openPicker}
+            className={`flex items-center justify-center rounded-full border border-green-500 px-4 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50 ${
+              isUploading ? "opacity-70" : ""
+            }`}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading to Airtable...
+              </>
+            ) : (
+              <>
+                <Plus className="mr-2 h-4 w-4" />
+                Upload Document
+              </>
+            )}
+          </button>
+          <input
+            id={inputId}
+            type="file"
+            ref={fileInputRef}
+            className="sr-only"
+            onChange={handleFileChange}
+            disabled={isUploading}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const primaryUrl = files[0];
+  const fileName = getFileNameFromUrl(primaryUrl);
+
+  return (
+    <div className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {slot.label}
+      </p>
+      <div className="mt-3 flex-1">
+        <p className="text-base font-semibold text-gray-900 break-all">{fileName}</p>
+        <p className="mt-1 text-xs text-gray-500 line-clamp-3">{slot.description}</p>
+        {files.length > 1 && (
+          <p className="mt-2 text-xs text-gray-400">
+            +{files.length - 1} additional file
+            {files.length - 1 > 1 ? "s" : ""}
+          </p>
+        )}
+      </div>
+      <div className="mt-4 flex gap-2">
+        <a
+          href={primaryUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-center text-sm font-medium text-green-700 transition hover:bg-green-50"
+        >
+          View
+        </a>
+        <button
+          type="button"
+          onClick={openPicker}
+          className={`rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 ${
+            isUploading ? "opacity-70" : ""
+          }`}
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <span className="flex items-center">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Uploading to Airtable...
+            </span>
+          ) : (
+            "Replace"
+          )}
+        </button>
+        <input
+          id={inputId}
+          type="file"
+          ref={fileInputRef}
+          className="sr-only"
+          onChange={handleFileChange}
+          disabled={isUploading}
+        />
+      </div>
+    </div>
+  );
+};
+
+const PhotoUploadButton = ({ label, slotKey, onUpload, isUploading }) => {
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = async (event) => {
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile) {
+      await onUpload(slotKey, selectedFile);
+    }
+    event.target.value = "";
+  };
+
+  return (
+    <div className="flex">
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        className={`rounded-full border border-green-500 px-4 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50 ${
+          isUploading ? "opacity-70" : ""
+        }`}
+        disabled={isUploading}
+      >
+        {isUploading ? "Uploading..." : label}
+      </button>
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileInputRef}
+        className="sr-only"
+        onChange={handleFileChange}
+        disabled={isUploading}
+      />
+    </div>
+  );
+};
+
 const ProjectDetail = () => {
   const navigate = useNavigate();
   const { id: projectId } = useParams();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [docUploadState, setDocUploadState] = useState({ key: null, error: null });
+  const [photoUploadState, setPhotoUploadState] = useState({ key: null, error: null });
+  const [lightboxImage, setLightboxImage] = useState(null);
+
+  const loadProjectDetails = useCallback(async () => {
+    if (!projectId) {
+      setError("Project ID is missing.");
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiService.getProjectDetails(projectId);
+      if (data) {
+        setProject(data);
+      } else {
+        setError(`Project with ID ${projectId} not found.`);
+      }
+    } catch (err) {
+      console.error("Failed to fetch project details:", err);
+      setError("Could not load project details. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
 
   useEffect(() => {
-    const fetchProject = async () => {
-      if (!projectId) {
-        setError("Project ID is missing.");
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await apiService.getProjectDetails(projectId);
-        if (data) {
-          setProject(data);
-        } else {
-          setError(`Project with ID ${projectId} not found.`);
-        }
-      } catch (err) {
-        console.error("Failed to fetch project details:", err);
-        setError("Could not load project details. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProject();
-  }, [projectId]);
+    loadProjectDetails();
+  }, [loadProjectDetails]);
 
   const handleDeleteProject = async () => {
     if (!projectId) {
@@ -99,15 +296,87 @@ const ProjectDetail = () => {
     navigate("/admin/dashboard");
   };
 
-  const beforePhotos = Array.isArray(project?.beforePhotoUrls)
-    ? project.beforePhotoUrls.filter(Boolean)
-    : [];
+  const beforePhotos = ensureArray(project?.beforePhotoUrls);
+  const plantingPhotos = ensureArray(project?.plantingPhotoUrls);
+  const combinedPhotos = Array.from(
+    new Set([...beforePhotos, ...plantingPhotos].filter(Boolean))
+  );
+  const landownerPhotos = ensureArray(project?.propertyImageUrls);
+  const activeCarbonShapefiles = ensureArray(project?.activeCarbonShapefiles);
   const carouselPhotos =
-    beforePhotos.length > 0
-      ? beforePhotos
+    combinedPhotos.length > 0
+      ? combinedPhotos
       : project?.image
       ? [project.image]
       : [];
+
+  const handleDocumentUpload = async (slotKey, file) => {
+    if (!projectId || !file) {
+      return;
+    }
+    setDocUploadState({ key: slotKey, error: null });
+    try {
+      await apiService.uploadProjectDocument(projectId, slotKey, file);
+      // Give Airtable a brief window to finish hosting (especially PDFs) before reloading
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await loadProjectDetails();
+    } catch (uploadErr) {
+      console.error("Failed to upload document:", uploadErr);
+      setDocUploadState({
+        key: null,
+        error: uploadErr?.message || "Failed to upload document.",
+      });
+      return;
+    }
+    setDocUploadState({ key: null, error: null });
+  };
+
+  const handlePhotoUpload = async (slotKey, file) => {
+    if (!projectId || !file) {
+      return;
+    }
+    setPhotoUploadState({ key: slotKey, error: null });
+    try {
+      await apiService.uploadProjectDocument(projectId, slotKey, file);
+      await loadProjectDetails();
+      setPhotoUploadState({ key: null, error: null });
+    } catch (uploadErr) {
+      console.error("Failed to upload photo:", uploadErr);
+      setPhotoUploadState({
+        key: slotKey,
+        error: uploadErr?.message || "Failed to upload photo.",
+      });
+    }
+  };
+
+  const handleDownloadShapeFiles = () => {
+    if (!activeCarbonShapefiles.length) {
+      return;
+    }
+    activeCarbonShapefiles.forEach((url) => {
+      if (!url) return;
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.download = "";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  };
+
+  const projectDocuments = project?.documents || {};
+  const resolvedDocumentSlots = DOCUMENT_SLOTS.map((slot) => {
+    const primary = ensureArray(projectDocuments[slot.key]);
+    const fallback = slot.fallbackField
+      ? ensureArray(project?.[slot.fallbackField])
+      : [];
+    return {
+      ...slot,
+      files: primary.length > 0 ? primary : fallback,
+    };
+  });
 
   if (loading) {
     return (
@@ -143,6 +412,11 @@ const ProjectDetail = () => {
   const primaryContactName = ensureText(
     project.ownerDisplayName || project.ownerFirstName || project.landowner
   );
+  const primaryContactPhone =
+    project.phone || project.contact?.phone || "";
+  const sanitizedPhoneHref = primaryContactPhone
+    ? `tel:${primaryContactPhone.replace(/[^+\d]/g, "")}`
+    : undefined;
 
   const associatedMemberFields = [
     {
@@ -159,6 +433,11 @@ const ProjectDetail = () => {
       href: project.email || project.contact?.email
         ? `mailto:${project.email || project.contact.email}`
         : undefined,
+    },
+    {
+      label: "Phone",
+      value: ensureText(primaryContactPhone, "Not provided"),
+      href: sanitizedPhoneHref,
     },
   ];
 
@@ -202,10 +481,10 @@ const ProjectDetail = () => {
 
   const statusValueClass =
     project.status === "Active"
-      ? "text-green-600"
+      ? "text-green-600 bg-green-50 border-green-200"
       : project.status === "Completed"
-      ? "text-blue-600"
-      : "text-gray-700";
+      ? "text-blue-600 bg-blue-50 border-blue-200"
+      : "text-gray-700 bg-gray-100 border-gray-200";
 
   const statusFields = [
     {
@@ -219,9 +498,37 @@ const ProjectDetail = () => {
       value: project.seasonYear || "N/A",
       placeholder: "N/A",
     },
+  ];
+
+  const acreageFields = [
     {
-      label: "Start Date",
-      value: project.startDate ? formatDate(project.startDate) : "",
+      label: "Wetland Acres",
+      value: ensureText(project.wetlandAcres, "Not recorded"),
+      placeholder: "Not recorded",
+    },
+    {
+      label: "Upland Acres",
+      value: ensureText(project.uplandAcres, "Not recorded"),
+      placeholder: "Not recorded",
+    },
+    {
+      label: "Total Acres",
+      value: ensureText(project.totalAcres, "Not recorded"),
+      placeholder: "Not recorded",
+    },
+    {
+      label: "Wetland Trees",
+      value: ensureText(project.wetlandTrees, "Not recorded"),
+      placeholder: "Not recorded",
+    },
+    {
+      label: "Upland Trees",
+      value: ensureText(project.uplandTrees, "Not recorded"),
+      placeholder: "Not recorded",
+    },
+    {
+      label: "Total Trees",
+      value: ensureText(project.totalTrees, "Not recorded"),
       placeholder: "Not recorded",
     },
   ];
@@ -230,8 +537,47 @@ const ProjectDetail = () => {
     (field) => field.value && field.value !== "Not recorded"
   );
 
+  const openLightbox = (url) => {
+    if (url) {
+      setLightboxImage(url);
+    }
+  };
+
+  const closeLightbox = () => setLightboxImage(null);
+
+  const timelinePhases = [
+    {
+      title: "June — August",
+      points: [
+        "On-site consultations with TreeFolks' experts & create draft maps",
+        'Establish "Grow Zones" in planting areas',
+        "Fence out livestock from grow zones",
+      ],
+    },
+    {
+      title: "September — November",
+      points: [
+        "Ideal time for seeding wildflowers & native grasses",
+        "Mark planting areas & finalize maps",
+      ],
+    },
+    {
+      title: "December — February",
+      points: [
+        "Trees are planted by contractors or volunteers",
+      ],
+    },
+    {
+      title: "March — May",
+      points: [
+        "Carbon+ Credit docs filed w/ county clerks",
+        "Landowners submit photo points annually",
+      ],
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-full bg-gray-50">
       <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <button
@@ -244,8 +590,8 @@ const ProjectDetail = () => {
             }
           >
             <ArrowLeft className="mr-1 h-4 w-4" />
-            Back
-          </button>
+              Back
+            </button>
           <div className="flex space-x-2">
             <Link
               to={`/admin/project/${projectId}/edit`}
@@ -265,7 +611,7 @@ const ProjectDetail = () => {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 space-y-10">
         {error && (
           <div className="mb-4 flex items-center justify-center rounded-lg bg-red-100 p-3 text-center text-red-500 shadow-sm">
             <AlertCircle className="mr-2 h-5 w-5 flex-shrink-0" />
@@ -273,37 +619,134 @@ const ProjectDetail = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            {carouselPhotos.length > 0 ? (
-              <Carousel
-                images={carouselPhotos}
-                className="mb-4 lg:mb-6"
-                aspectClass="aspect-[4/3] lg:aspect-[3/2]"
-              />
-            ) : (
-              <div className="mb-4 flex aspect-[4/3] max-h-[360px] items-center justify-center rounded-lg bg-gray-200 shadow-sm lg:mb-6">
-                <p className="text-gray-500">No photos available</p>
-              </div>
-            )}
-
-            <div className="space-y-2 text-gray-600">
-              <h1 className="text-3xl font-bold text-gray-900">
-                {project.name}
-              </h1>
-              <div className="flex items-center">
-                <MapPin className="mr-2 h-5 w-5 flex-shrink-0" />
-                <span>{project.address || "No property address recorded"}</span>
-              </div>
-              {project.location && (
-                <div className="flex items-center">
-                  <span className="ml-7">{project.location}</span>
+        <div className="space-y-10">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-gray-700">Planting Photos & Before Photos</p>
+              {carouselPhotos.length > 0 ? (
+                <Carousel
+                  images={carouselPhotos}
+                  className="mb-4 lg:mb-6"
+                  aspectClass="aspect-[4/3] lg:aspect-[3/2]"
+                  onImageClick={openLightbox}
+                />
+              ) : (
+                <div className="mb-4 flex aspect-[4/3] max-h-[360px] items-center justify-center rounded-lg bg-gray-200 shadow-sm lg:mb-6">
+                  <p className="text-gray-500">No photos available</p>
                 </div>
+              )}
+              <div className="mt-6 flex flex-wrap gap-3">
+                <PhotoUploadButton
+                  label="Upload Planting Photo"
+                  slotKey="plantingPhotoUrls"
+                  onUpload={handlePhotoUpload}
+                  isUploading={photoUploadState.key === "plantingPhotoUrls"}
+                />
+                <PhotoUploadButton
+                  label="Upload Before Photo"
+                  slotKey="beforePhotoUrls"
+                  onUpload={handlePhotoUpload}
+                  isUploading={photoUploadState.key === "beforePhotoUrls"}
+                />
+              </div>
+              {photoUploadState.error &&
+                ["plantingPhotoUrls", "beforePhotoUrls"].includes(photoUploadState.key) && (
+                  <p className="text-xs text-red-600">{photoUploadState.error}</p>
+                )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-gray-700">Landowner Submissions</p>
+              {landownerPhotos.length > 0 ? (
+                <Carousel
+                  images={landownerPhotos}
+                  className="mb-4 lg:mb-6"
+                  aspectClass="aspect-[4/3] lg:aspect-[3/2]"
+                  onImageClick={openLightbox}
+                />
+              ) : (
+                <div className="mb-4 flex aspect-[4/3] max-h-[360px] items-center justify-center rounded-lg bg-gray-200 shadow-sm lg:mb-6">
+                  <p className="text-gray-500">No landowner submissions yet</p>
+                </div>
+              )}
+              <div className="mt-6 flex flex-wrap gap-3">
+                <PhotoUploadButton
+                  label="Upload Landowner Submission"
+                  slotKey="propertyImageUrls"
+                  onUpload={handlePhotoUpload}
+                  isUploading={photoUploadState.key === "propertyImageUrls"}
+                />
+              </div>
+              {photoUploadState.error && photoUploadState.key === "propertyImageUrls" && (
+                <p className="text-xs text-red-600">{photoUploadState.error}</p>
               )}
             </div>
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-2 text-gray-600">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-bold text-gray-900">
+                {primaryContactName}
+              </h1>
+              {project?.status && (
+                <span
+                  className={`rounded-full border px-3 py-1 text-sm font-medium ${statusValueClass}`}
+                >
+                  {project.status}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center">
+              <MapPin className="mr-2 h-5 w-5 flex-shrink-0" />
+              <span>{project.address || "No property address recorded"}</span>
+            </div>
+            {project.location && (
+              <div className="flex items-center">
+                <span className="ml-7">{project.location}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-green-100 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Active Carbon Shapefiles</p>
+                <p className="text-xs text-gray-500">
+                  {activeCarbonShapefiles.length > 0
+                    ? `${activeCarbonShapefiles.length} file${activeCarbonShapefiles.length === 1 ? "" : "s"} available`
+                    : "No shape files uploaded yet"}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadShapeFiles}
+                  disabled={!activeCarbonShapefiles.length}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    activeCarbonShapefiles.length
+                      ? "border-green-600 text-green-700 hover:bg-green-50"
+                      : "border-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  Download All
+                </button>
+                {activeCarbonShapefiles.map((url, idx) => (
+                  <a
+                    key={`${url}-${idx}`}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    download
+                    className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
+                  >
+                    File {idx + 1}
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <InfoCard title="Associated Members">
               <div className="mb-1 flex items-start space-x-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-700">
@@ -363,9 +806,168 @@ const ProjectDetail = () => {
                 )
               )}
             </InfoCard>
+
+            <InfoCard title="Acreage & Trees">
+              {acreageFields.map(({ label, value, placeholder }) => (
+                <InfoField
+                  key={label}
+                  label={label}
+                  value={value}
+                  placeholder={placeholder}
+                />
+              ))}
+            </InfoCard>
+          </div>
+        </div>
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
+          <h2 className="text-2xl font-semibold text-gray-900">
+            What should I expect?
+          </h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Seasonal timeline to help landowners prep for each stage.
+          </p>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {timelinePhases.map((phase) => (
+              <div
+                key={phase.title}
+                className="rounded-xl border border-gray-100 bg-green-50/60 p-5"
+              >
+                <h3 className="text-lg font-semibold text-green-900">
+                  {phase.title}
+                </h3>
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-gray-700">
+                  {phase.points.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Associated Documents
+          </h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Keep carbon paperwork and mapping artifacts together with each project.
+          </p>
+          {docUploadState.error && (
+            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+              {docUploadState.error}
+            </div>
+          )}
+          <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {resolvedDocumentSlots.map((slot) => (
+              <DocumentTile
+                key={slot.key}
+                slot={slot}
+                files={slot.files}
+                onUpload={handleDocumentUpload}
+                isUploading={docUploadState.key === slot.key}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-10 rounded-2xl bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-gray-900">Photo Gallery</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Quick view thumbnails from each photo set.
+          </p>
+
+          <div className="mt-6 space-y-6">
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-800">
+                  Planting Photos & Before Photos
+                </p>
+                <span className="text-xs text-gray-500">
+                  {combinedPhotos.length} photo{combinedPhotos.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              {combinedPhotos.length > 0 ? (
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  {combinedPhotos.map((url, idx) => (
+                    <div
+                      key={`${url}-${idx}`}
+                      className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50"
+                      onClick={() => openLightbox(url)}
+                    >
+                      <img
+                        src={url}
+                        alt={`Planting or before photo ${idx + 1}`}
+                        className="h-24 w-full object-cover cursor-pointer"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-gray-500">
+                  No planting or before photos yet.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-800">
+                  Landowner Submissions
+                </p>
+                <span className="text-xs text-gray-500">
+                  {landownerPhotos.length} photo{landownerPhotos.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              {landownerPhotos.length > 0 ? (
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  {landownerPhotos.map((url, idx) => (
+                    <div
+                      key={`${url}-${idx}`}
+                      className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50"
+                      onClick={() => openLightbox(url)}
+                    >
+                      <img
+                        src={url}
+                        alt={`Landowner submission ${idx + 1}`}
+                        className="h-24 w-full object-cover cursor-pointer"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-gray-500">
+                  No landowner submissions yet.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={closeLightbox}
+        >
+          <div
+            className="relative max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-xl bg-black shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={closeLightbox}
+              className="absolute right-4 top-4 rounded-full bg-white/90 px-3 py-1 text-sm font-semibold text-gray-700 shadow-md transition hover:bg-white"
+            >
+              Close
+            </button>
+            <img
+              src={lightboxImage}
+              alt="Selected project media"
+              className="max-h-[85vh] w-full object-contain bg-black"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -17,6 +17,7 @@ const Carousel = ({
   aspectClass = "aspect-video",
   showDots = true,
   showArrows = true,
+  onImageClick,
 }) => {
   const slides = useMemo(
     () => (Array.isArray(images) ? images.filter(Boolean) : []),
@@ -41,6 +42,12 @@ const Carousel = ({
   const goPrev = () => goTo(activeIndex - 1);
   const goNext = () => goTo(activeIndex + 1);
 
+  const handleImageClick = () => {
+    if (onImageClick) {
+      onImageClick(slides[activeIndex]);
+    }
+  };
+
   return (
     <div className={`relative ${className}`}>
       <div
@@ -49,7 +56,8 @@ const Carousel = ({
         <img
           src={slides[activeIndex]}
           alt={`carousel slide ${activeIndex + 1}`}
-          className={`h-full w-full object-cover ${imageClassName}`}
+          className={`h-full w-full object-cover ${onImageClick ? "cursor-pointer" : ""} ${imageClassName}`}
+          onClick={onImageClick ? handleImageClick : undefined}
         />
 
         {showArrows && slides.length > 1 && (
@@ -75,13 +83,13 @@ const Carousel = ({
       </div>
 
       {showDots && slides.length > 1 && (
-        <div className="pointer-events-none absolute -bottom-6 left-1/2 flex -translate-x-1/2 space-x-2">
+        <div className="mt-3 flex items-center justify-center space-x-2">
           {slides.map((_, index) => (
             <button
               key={index}
               type="button"
               onClick={() => goTo(index)}
-              className={`pointer-events-auto h-2.5 w-2.5 rounded-full transition ${
+              className={`h-2.5 w-2.5 rounded-full transition ${
                 activeIndex === index
                   ? "bg-green-600"
                   : "bg-gray-300 hover:bg-gray-400"
@@ -104,6 +112,7 @@ Carousel.propTypes = {
   aspectClass: PropTypes.string,
   showDots: PropTypes.bool,
   showArrows: PropTypes.bool,
+  onImageClick: PropTypes.func,
 };
 
 export default Carousel;

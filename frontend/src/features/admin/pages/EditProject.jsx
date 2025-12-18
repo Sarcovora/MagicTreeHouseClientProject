@@ -17,7 +17,6 @@ const EditProject = () => {
     location: '', // General location/area
     address: '', // Specific address
     description: '',
-    startDate: '',
     status: '', // Default status
     seasonYear: '', // Pre-select if available
     image: '', // Text input for image path for now
@@ -61,7 +60,6 @@ const EditProject = () => {
             location: projectData.location || '',
             address: projectData.address || '',
             description: projectData.description || '',
-            startDate: projectData.startDate ? projectData.startDate.split('T')[0] : '',
             status: projectData.status || 'Pending',
             seasonYear: projectData.seasonYear || '',
             image: projectData.image || '',
@@ -129,7 +127,6 @@ const EditProject = () => {
       location: formData.location,
       address: formData.address,
       description: formData.description,
-      startDate: formData.startDate,
       status: formData.status,
       seasonYear: formData.seasonYear,
       image: formData.image || null,
@@ -260,12 +257,8 @@ const EditProject = () => {
             <textarea id="description" name="description" value={formData.description} onChange={handleInputChange} rows={4} placeholder="Describe the project goals, scope, and any relevant details..." className="w-full p-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"></textarea>
          </div>
 
-         {/* Other Details (Status, Date, Image) */}
-          <div className="border-t pt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-              <input type="date" id="startDate" name="startDate" value={formData.startDate} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500" />
-            </div>
+         {/* Other Details (Status, Image) */}
+          <div className="border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select id="status" name="status" value={formData.status} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg bg-white focus:ring-green-500 focus:border-green-500">
