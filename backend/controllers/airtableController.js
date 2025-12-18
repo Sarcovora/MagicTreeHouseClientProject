@@ -53,19 +53,6 @@ const handleGetProjectDetails = asyncHandler(async (req, res, next) => {
     }
 });
 
-//const handleAddSeason = asyncHandler(async (req, res) => {
-//    const { seasonName } = req.body;
-//    if (!seasonName || typeof seasonName !== 'string' || seasonName.trim() === '') {
-//        return res.status(400).json({ message: 'Valid seasonName (string) is required in the request body.' });
-//    }
-//    const result = await airtableService.addSeasonOption(seasonName.trim());
-//     // Check if the service indicated it already exists
-//     if (result?.message?.includes('already exists')) {
-//        return res.status(200).json(result); // Or maybe 409 Conflict? 200 is okay here.
-//    }
-//    res.status(201).json({ message: `Season option "${seasonName.trim()}" added successfully.`, details: result });
-//});
-
 const handleAddSeason = asyncHandler(async (req, res) => {
     const { seasonName } = req.body;
     if (!seasonName || typeof seasonName !== 'string' || seasonName.trim() === '') {

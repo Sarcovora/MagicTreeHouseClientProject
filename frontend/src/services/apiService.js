@@ -18,6 +18,7 @@
  */
 
 import axios from 'axios';
+import { auth } from '../firebase';
 
 // --- Configuration ---
 const DEFAULT_API_BASE = 'http://localhost:3000';
@@ -26,6 +27,19 @@ const apiPrefix = import.meta?.env?.VITE_API_PREFIX ?? '/api';
 const apiClient = axios.create({
   baseURL: `${apiBaseFromEnv}${apiPrefix}`,
   timeout: 10000,
+});
+
+apiClient.interceptors.request.use(async (config) => {
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      const token = await currentUser.getIdToken();
+      config.headers.Authorization = `Bearer ${token}`;
+    } catch (error) {
+      console.error("Unable to attach auth token:", error);
+    }
+  }
+  return config;
 });
 
 // --- Mock Data ---

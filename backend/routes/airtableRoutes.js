@@ -2,6 +2,12 @@
 const express = require('express');
 const router = express.Router();
 const airtableController = require('../controllers/airtableController');
+const {
+    authenticateRequest,
+    requireAdmin,
+} = require('../middleware/authMiddleware');
+
+router.use(authenticateRequest);
 
 // GET all available seasons (options from the 'Season' field)
 // Corresponds to: GetAllSeason()
@@ -9,11 +15,11 @@ router.get('/seasons', airtableController.handleGetAllSeasons);
 
 // POST a new season option (adds choice to 'Season' field)
 // Corresponds to: AddNewFolder("24-25") - *Note: Modifies schema*
-router.post('/seasons', airtableController.handleAddSeason);
+router.post('/seasons', requireAdmin, airtableController.handleAddSeason);
 
 // DELETE an existing season option (removes choice from 'Season' field)
 // Corresponds to: DeleteFolder("24-25")
-router.delete('/seasons/:seasonId', airtableController.handleDeleteSeason);
+router.delete('/seasons/:seasonId', requireAdmin, airtableController.handleDeleteSeason);
 
 // GET projects filtered by a specific season
 // Corresponds to: GetProjectsForSeason("24-25")
@@ -25,13 +31,13 @@ router.get('/projects/details/:recordId', airtableController.handleGetProjectDet
 
 // POST a new project (creates a new record in Airtable)
 // Corresponds to: AddNewProject(...)
-router.post('/projects', airtableController.handleAddProject);
+router.post('/projects', requireAdmin, airtableController.handleAddProject);
 
 // PATCH an existing project (updates a record in Airtable by its Record ID)
 // Corresponds to: UpdateProject(recordId, projectData)
-router.patch('/projects/:recordId', airtableController.handleUpdateProject);
+router.patch('/projects/:recordId', requireAdmin, airtableController.handleUpdateProject);
 
 // Upload/replace a project document (attachments)
-router.post('/projects/:recordId/documents', airtableController.handleUploadProjectDocument);
+router.post('/projects/:recordId/documents', requireAdmin, airtableController.handleUploadProjectDocument);
 
 module.exports = router;

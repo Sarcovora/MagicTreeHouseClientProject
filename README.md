@@ -176,6 +176,9 @@ AIRTABLE_TABLE_ID=your_table_id
 AIRTABLE_SEASON_FIELD_ID=your_season_field_id
 AIRTABLE_API_URL=https://api.airtable.com
 
+# Firebase Admin (single-line JSON string)
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"treefolks-db",...}
+
 # Server
 PORT=3000
 ```
@@ -185,6 +188,12 @@ PORT=3000
 # Backend API URL
 VITE_API_BASE_URL=http://localhost:3000/api
 ```
+
+## 🔐 Authentication Workflow
+1. **Firebase project** – Enable Email/Password auth and Firestore. The client SDK is initialized in `frontend/src/firebase.js`; update the config there if you change Firebase projects.
+2. **Seed users** – Every signup creates a Firestore doc (`users/{uid}`) with `username`, `email`, and `isAdmin`. The UID `v0uqBwBApQVhBTLSaweNTonHnnH2` is whitelisted as the initial admin, but you can add more UIDs to `ADMIN_UIDS` in `firebase.js` or flip the `isAdmin` flag directly in Firestore.
+3. **Backend verification** – Set `FIREBASE_SERVICE_ACCOUNT_JSON` so the Express API can verify `Authorization: Bearer <idToken>` headers. All routes require authentication; mutating routes additionally require `isAdmin`.
+4. **Handoff** – Grant future developers Owner access in Firebase console and share `.env` files/service-account JSON so they can maintain auth without touching end-user credentials.
 
 ## 🛠️ Development
 

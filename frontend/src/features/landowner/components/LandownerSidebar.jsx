@@ -1,105 +1,116 @@
+import { useState } from "react";
 import {
   TreePine,
   FormInput,
-  Bell,
   Map,
   LogOut,
   Settings,
   ChevronDown,
-  Home,
-  FileText,
-  ClipboardList,
   Image,
 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import TreeFolks from "../../../assets/icons/treefolks.svg?react";
+import UserAvatar from "../../../components/common/UserAvatar";
+import { useAuth } from "../../auth/AuthProvider";
 
 const LandownerSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { profile, signOut } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const displayName = profile?.username || profile?.email || "Landowner";
 
   const menuItems = [
-    { icon: <TreePine size={24} />, label: "Properties", path: "/properties" },
-    { icon: <FormInput size={24} />, label: "Forms", path: "/forms" },
-    {
-      icon: <Bell size={24} />,
-      label: "Notifications",
-      path: "/notifications",
-    },
-    { icon: <Map size={24} />, label: "Map", path: "/map" },
-    { icon: <Image size={24} />, label: "Photos", path: "/gallery" },
+    { icon: <TreePine size={22} />, label: "Dashboard", path: "/landowner/dashboard" },
+    { icon: <FormInput size={22} />, label: "Forms", path: "/landowner/forms" },
+    { icon: <Map size={22} />, label: "Map", path: "/landowner/map" },
+    { icon: <Image size={22} />, label: "Photos", path: "/landowner/gallery" },
   ];
 
-  // Check if a path is active
-  const isActive = (path) => {
-    if (path === "/") {
-      return location.pathname === "/";
+  const isActive = (path) => location.pathname.startsWith(path);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Failed to sign out:", error);
     }
-    return location.pathname.startsWith(path);
   };
 
   return (
-    <div className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col">
-      {/* Logo Section */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-center">
-          <TreeFolks className="w-32 h-32 text-green-600" />
-          {/* <span className="text-xl font-semibold">TreeFolks</span> */}
-        </div>
+    <div className="flex h-screen w-64 flex-col border-r border-gray-200 bg-white">
+      <div className="border-b border-gray-200 p-6">
+        <Link
+          to="/landowner/dashboard"
+          className="flex items-center justify-center focus:outline-none"
+        >
+          <TreeFolks className="h-32 w-32 text-green-600" />
+        </Link>
       </div>
 
-      {/* Navigation Menu */}
-      <nav className="flex-1 p-4">
-        {menuItems.map((item, index) => (
+      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+        {menuItems.map((item) => (
           <Link
-            key={index}
+            key={item.label}
             to={item.path}
-            className={`flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg mb-1 transition-colors ${
+            className={`flex items-center space-x-3 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               isActive(item.path)
-                ? "text-green-600 bg-green-50 border-l-4 border-green-600"
-                : ""
+                ? "border-l-4 border-green-600 bg-green-50 text-green-700"
+                : "text-gray-700 hover:bg-gray-100"
             }`}
           >
             {item.icon}
-            <span className="font-medium">{item.label}</span>
+            <span>{item.label}</span>
           </Link>
         ))}
       </nav>
 
-      {/* User Profile Section */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center justify-between p-2 hover:bg-gray-100 rounded-lg cursor-pointer">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-              {/* You can replace this with an actual profile image */}
-              <span className="text-gray-600 font-medium">JD</span>
-            </div>
-            <div>
-              <p className="font-medium">John Doe</p>
-              <p className="text-sm text-gray-500">Admin</p>
+      <div className="relative border-t border-gray-200 p-4">
+        <button
+          type="button"
+          onClick={() => setMenuOpen((open) => !open)}
+          className="flex w-full items-center justify-between rounded-lg p-2 hover:bg-gray-100"
+        >
+          <div className="flex items-center space-x-3 overflow-hidden">
+            <UserAvatar name={displayName} size={36} />
+            <div className="overflow-hidden text-left">
+              <p className="truncate text-sm font-medium text-gray-900">
+                {displayName}
+              </p>
+              <p className="truncate text-xs text-gray-500">Landowner</p>
             </div>
           </div>
-          <ChevronDown size={20} className="text-gray-500" />
-        </div>
+          <ChevronDown
+            size={18}
+            className={`text-gray-500 transition-transform ${
+              menuOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
 
-        {/* Settings and Logout */}
-        <div className="mt-4 space-y-2">
-          <Link
-            to="/settings"
-            className="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors w-full"
-          >
-            <Settings size={20} />
-            <span>Settings</span>
-          </Link>
-          <button
-            onClick={() => {
-              /* Handle logout */
-            }}
-            className="flex items-center space-x-3 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full"
-          >
-            <LogOut size={20} />
-            <span>Logout</span>
-          </button>
-        </div>
+        {menuOpen && (
+          <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
+            <Link
+              to="/account"
+              onClick={() => setMenuOpen(false)}
+              className="flex w-full items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              <Settings size={18} />
+              <span>Account settings</span>
+            </Link>
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                handleLogout();
+              }}
+              className="flex w-full items-center space-x-3 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+            >
+              <LogOut size={18} />
+              <span>Logout</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

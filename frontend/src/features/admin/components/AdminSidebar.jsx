@@ -1,5 +1,5 @@
 // src/features/admin/components/AdminSidebar.jsx
-import React from 'react'; // Sidebar renders nav icons that rely on React.cloneElement
+import React, { useState } from "react";
 import {
   TreePine,
   FormInput,
@@ -10,40 +10,23 @@ import {
   ChevronDown,
   Image,
 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import TreeFolks from "../../../assets/icons/treefolks.svg?react";
-import { useState, useEffect } from 'react';
-import apiService from '../../../services/apiService';
-import UserAvatar from '../../../components/common/UserAvatar';
+import UserAvatar from "../../../components/common/UserAvatar";
+import { useAuth } from "../../auth/AuthProvider";
 
 const AdminSidebar = () => {
   const location = useLocation();
-  const [user, setUser] = useState({ name: 'User', role: 'Admin' });
+  const navigate = useNavigate();
+  const { profile, isAdmin, signOut } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchUser = async () => {
-      try {
-        const userData = await apiService.getUserProfile();
-        if (isMounted && userData) {
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error("Failed to fetch user profile:", error);
-      }
-    };
-    fetchUser();
-    return () => { isMounted = false; };
-  }, []);
-
+  const displayName = profile?.username || profile?.email || "User";
+  const roleLabel = isAdmin ? "Admin" : "Landowner";
 
   const menuItems = [
     { icon: <TreePine size={20} />, label: "Dashboard", path: "/admin/dashboard" },
     { icon: <FormInput size={20} />, label: "Forms", path: "/admin/forms" },
-    // WILL BE ADDED LATER
     { icon: <Bell size={20} />, label: "Notifications", path: "/admin/notifications" },
-
     { icon: <Map size={20} />, label: "Map", path: "/admin/map" },
     { icon: <Image size={20} />, label: "Photos", path: "/admin/gallery" },
   ];
@@ -56,9 +39,13 @@ const AdminSidebar = () => {
     return location.pathname.startsWith(path);
    };
 
-  const handleLogout = () => {
-    console.log("Logout clicked");
-    alert("Simulating Logout...");
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+    }
   };
 
 
@@ -66,7 +53,10 @@ const AdminSidebar = () => {
     <div className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col shrink-0">
       {/* Logo Section */}
       <div className="p-6 border-b border-gray-200">
-        <Link to="/admin/dashboard" className="flex items-center justify-center focus:outline-none d">
+        <Link
+          to={isAdmin ? "/admin/dashboard" : "/landowner/dashboard"}
+          className="flex items-center justify-center focus:outline-none"
+        >
           <TreeFolks className="w-32 h-32 text-green-600" />
         </Link>
       </div>
@@ -101,10 +91,10 @@ const AdminSidebar = () => {
           aria-expanded={userMenuOpen}
          >
           <div className="flex items-center space-x-3 overflow-hidden mr-2">
-            <UserAvatar name={user.name} size={36} />
+            <UserAvatar name={displayName} size={36} />
             <div className="overflow-hidden">
-              <p className="font-medium text-sm truncate">{user.name}</p>
-              <p className="text-xs text-gray-500 truncate">{user.role || 'Admin'}</p>
+              <p className="font-medium text-sm truncate">{displayName}</p>
+              <p className="text-xs text-gray-500 truncate">{roleLabel}</p>
             </div>
           </div>
           <ChevronDown size={18} className={`text-gray-500 transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
@@ -113,13 +103,13 @@ const AdminSidebar = () => {
         {/* User Dropdown Menu */}
         {userMenuOpen && (
           <div className="absolute bottom-full left-0 right-0 mb-2 w-[calc(100%-2rem)] mx-4 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10 animate-fade-in-fast">
-             <Link
-                to="/admin/settings" // Assuming settings route
-                onClick={() => setUserMenuOpen(false)}
-                className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors w-full"
-             >
-                <Settings size={16} className="text-gray-500" />
-                <span>Settings</span>
+            <Link
+              to="/account"
+              onClick={() => setUserMenuOpen(false)}
+              className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors w-full"
+            >
+              <Settings size={16} className="text-gray-500" />
+              <span>Account</span>
             </Link>
             <button
                 onClick={() => { handleLogout(); setUserMenuOpen(false); }}

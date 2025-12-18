@@ -39,8 +39,9 @@ The backend is a lightweight Node.js/Express service that exposes Airtable data 
 
 ## Environment & Startup
 1. Create `backend/.env` with Airtable credentials (`AIRTABLE_PAT`, base IDs, table names, etc.).
-2. Install dependencies (`npm install`) if needed.
-3. Run `node server.js` while in the backend folder.
+2. Add Firebase Admin credentials by exporting your service account JSON (Project Settings → Service accounts → Generate new private key) and setting `FIREBASE_SERVICE_ACCOUNT_JSON` to the full JSON string (or a base64-encoded string decoded at runtime). This enables bearer-token validation and admin gating.
+3. Install dependencies (`npm install`) if needed.
+4. Run `node server.js` while in the backend folder.
 
 ## Documentation Map
 - `backend/API_DOCUMENTATION.md`: Authoritative reference for all backend endpoints, including payloads, query parameters, and sample responses.
