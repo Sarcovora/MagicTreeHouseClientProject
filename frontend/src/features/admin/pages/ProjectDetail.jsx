@@ -160,23 +160,57 @@ const DocumentTile = ({
     fileInputRef.current?.click();
   };
 
+  // Helper to extract URL and metadata
+  const getFileInfo = (file) => { // file can be string or object
+      if (!file) return { url: '', filename: '', extension: '' };
+      const url = typeof file === 'object' ? file.url : file;
+      const filename = typeof file === 'object' ? file.filename : '';
+      
+      // Determine extension from filename if available, else from URL
+      let extension = '';
+      if (filename) {
+          extension = filename.split('.').pop().toLowerCase();
+      } else {
+          // Fallback to URL parsing (less reliable for signed URLs)
+          const cleanUrl = url.split('?')[0].toLowerCase();
+          if (cleanUrl.match(/\.[a-z0-9]+$/)) {
+              extension = cleanUrl.split('.').pop();
+          }
+      }
+      return { url, filename, extension };
+  };
+
   const handleEdit = () => {
     if (onEdit) {
       // Use selected version, or default to newest (last in array)
       const indexToEdit = selectedVersionIndex !== null ? selectedVersionIndex : files.length - 1;
-      onEdit(slot.key, files[indexToEdit]);
+      const fileData = files[indexToEdit];
+      const { url, extension } = getFileInfo(fileData);
+      
+      // Robust detection using explicit extension from metadata
+      const hasImageExt = ['png', 'jpg', 'jpeg'].includes(extension);
+      const hasPdfExt = extension === 'pdf';
+      
+      // Logic: It is PDF if explicit pdf extension, OR (if extension matches nothing known or is missing AND it's draftMap)
+      // This is safer now that we have real filenames.
+      const isPdf = hasPdfExt || (slot.key === 'draftMap' && !hasImageExt);
+      
+      const filename = typeof fileData === 'object' ? fileData.filename : '';
+      
+      onEdit(slot.key, url, isPdf, filename);
     }
   };
 
   const inputId = `upload-${slot.key}`;
-  // Check if it's a PDF - either contains .pdf in URL or is from airtable (Draft Maps are typically PDFs)
-  const fileUrl = files[0]?.toLowerCase() || '';
-  const isPdf = fileUrl.includes('.pdf') || (slot.key === 'draftMap' && fileUrl.includes('airtable'));
+  
+  // Use newest file (last one) for display checks in Draft Map
+  const primaryFile = slot.key === 'draftMap' ? files[files.length - 1] : files[0];
+  const { url: primaryUrl } = getFileInfo(primaryFile);
+
   const canEdit = slot.key === 'draftMap' && files.length > 0;
 
   // Landowners can only upload versions if a file already exists. Initial upload is Admin only.
   const canModify = isAdmin || (slot.key === 'draftMap' && files.length > 0);
-  const showUpload = files.length === 0 && canModify;
   
   if (files.length === 0 || isUploading) {
       if (!canModify && files.length === 0) {
@@ -233,7 +267,10 @@ const DocumentTile = ({
   }
 
   // Use the last file (newest) for Draft Map, first file for others
-  const primaryUrl = slot.key === 'draftMap' ? files[files.length - 1] : files[0];
+  // Defined previously: primaryUrl from getFileInfo logic
+  // const primaryFile = slot.key === 'draftMap' ? files[files.length - 1] : files[0];
+  // const { url: primaryUrl } = getFileInfo(primaryFile);
+
   const isBusy = isUploading || isDeleting;
   const disabledLinkClass = isBusy ? "pointer-events-none opacity-60" : "";
 
@@ -425,12 +462,13 @@ const ProjectDetail = () => {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [possibleMatches, setPossibleMatches] = useState([]);
   const [docUploadState, setDocUploadState] = useState({ key: null, error: null });
   const [docDeleteState, setDocDeleteState] = useState({ key: null, error: null });
   const [photoUploadState, setPhotoUploadState] = useState({ key: null, error: null });
   const [lightboxImage, setLightboxImage] = useState(null);
   const [pendingPhotoUpload, setPendingPhotoUpload] = useState(null); // { file, slotKey }
-  const [pdfEditorState, setPdfEditorState] = useState({ isOpen: false, pdfUrl: null, documentType: null });
+  const [pdfEditorState, setPdfEditorState] = useState({ isOpen: false, pdfUrl: null, documentType: null, filename: null });
 
   const loadProjectDetails = useCallback(async () => {
     if (!projectId) {
@@ -576,44 +614,67 @@ const ProjectDetail = () => {
     }
   };
 
-  const handleDocumentEdit = (documentType, pdfUrl) => {
-    setPdfEditorState({ isOpen: true, pdfUrl, documentType });
+  const handleDocumentEdit = (documentType, pdfUrl, forceIsPdf, filename) => {
+    setPdfEditorState({ isOpen: true, pdfUrl, documentType, isPdf: forceIsPdf, filename });
   };
 
   const handlePdfEditorSave = async (blob) => {
     if (!projectId || !pdfEditorState.documentType) return;
 
     try {
-      // Get current file name from URL
-      const urlParts = pdfEditorState.pdfUrl.split('/');
-      const currentFileName = urlParts[urlParts.length - 1].split('?')[0];
+      // Determine base filename: use metadata filename if available, else parse URL
+      let currentFileName = pdfEditorState.filename;
+      
+      if (!currentFileName) {
+          const urlParts = pdfEditorState.pdfUrl.split('/');
+          currentFileName = urlParts[urlParts.length - 1].split('?')[0];
+      }
+      
+      // Use state flag if available, otherwise heuristic
+      const isPdf = pdfEditorState.isPdf !== undefined 
+          ? pdfEditorState.isPdf 
+          : currentFileName.toLowerCase().endsWith('.pdf');
+          
+      const extMatch = currentFileName.match(/\.([0-9a-z]+)$/i);
+      const originalExt = extMatch ? extMatch[1].toLowerCase() : (isPdf ? 'pdf' : 'png');
+      const outputExt = isPdf ? 'pdf' : 'png'; // PdfEditor exports images as PNG
 
-      // Extract base name and determine next version
-      const versionMatch = currentFileName.match(/_v(\d+)\.pdf$/i);
-      const baseFileName = currentFileName.replace(/_v\d+\.pdf$/i, '.pdf').replace(/\.pdf$/i, '');
+      // Extract base name logic considering version pattern _vX
+      // Regex to match "name_v1.pdf" or "name_v1.jpg"
+      const versionRegex = new RegExp(`_v(\\d+)\\.${originalExt}$`, 'i');
+      const versionMatch = currentFileName.match(versionRegex);
+      
+      let baseFileName = currentFileName;
+      if (versionMatch) {
+          baseFileName = currentFileName.replace(versionRegex, '');
+      } else {
+          // Check if it ends with extension and remove it
+          const extRegex = new RegExp(`\\.${originalExt}$`, 'i');
+          baseFileName = currentFileName.replace(extRegex, '');
+      }
+
       const nextVersion = versionMatch ? parseInt(versionMatch[1]) + 1 : 1;
-      const newFileName = `${baseFileName}_v${nextVersion}.pdf`;
+      const newFileName = `${baseFileName}_v${nextVersion}.${outputExt}`;
 
       // Create File object from blob
-      const file = new File([blob], newFileName, { type: 'application/pdf' });
+      const mimeType = isPdf ? 'application/pdf' : 'image/png';
+      const file = new File([blob], newFileName, { type: mimeType });
 
       // Close editor and upload
-      setPdfEditorState({ isOpen: false, pdfUrl: null, documentType: null });
+      setPdfEditorState({ isOpen: false, pdfUrl: null, documentType: null, isPdf: null, filename: null });
 
       // Upload the new version
-      console.log(`Uploading annotated PDF: ${newFileName}, size: ${blob.size} bytes`);
+      console.log(`Uploading annotated file: ${newFileName}, type: ${mimeType}, size: ${blob.size} bytes`);
       await handleDocumentUpload(pdfEditorState.documentType, file);
       
-      // Explicit check if upload updated the state (although handleDocumentUpload handles its own state/errors)
-      // We assume success if no error thrown.
     } catch (error) {
-      console.error('Failed to save annotated PDF:', error);
-      alert(`Failed to save annotated PDF: ${error.message || 'Unknown error'}`);
+      console.error('Failed to save annotated document:', error);
+      alert(`Failed to save annotated document: ${error.message || 'Unknown error'}`);
     }
   };
 
   const handlePdfEditorCancel = () => {
-    setPdfEditorState({ isOpen: false, pdfUrl: null, documentType: null });
+    setPdfEditorState({ isOpen: false, pdfUrl: null, documentType: null, isPdf: null, filename: null });
   };
 
   const initiatePhotoUpload = (slotKey, file) => {
@@ -1280,6 +1341,7 @@ const ProjectDetail = () => {
       {pdfEditorState.isOpen && pdfEditorState.pdfUrl && (
         <PdfEditor
           pdfUrl={pdfEditorState.pdfUrl}
+          isPdf={pdfEditorState.isPdf}
           onSave={handlePdfEditorSave}
           onCancel={handlePdfEditorCancel}
         />

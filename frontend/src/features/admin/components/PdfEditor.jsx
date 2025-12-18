@@ -10,13 +10,13 @@ import 'react-pdf/dist/esm/Page/TextLayer.css';
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
+const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
   const [numPages, setNumPages] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [canvas, setCanvas] = useState(null);
   const [penSize, setPenSize] = useState(3);
   const [penColor, setPenColor] = useState('#FF0000');
-  const [pdfDimensions, setPdfDimensions] = useState({ width: 800, height: 0 });
+  const [pdfDimensions, setPdfDimensions] = useState({ width: 800, height: 600 });
   const [isLoading, setIsLoading] = useState(false);
 
   const [pageAnnotations, setPageAnnotations] = useState({}); // Store annotations per page
@@ -24,6 +24,16 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
   const canvasRef = useRef(null);
   const pageRef = useRef(null);
   const fabricCanvasRef = useRef(null);
+
+  // Determine mode
+  // If propIsPdf is provided (boolean), use it. Otherwise fall back to URL check.
+  const cleanUrl = pdfUrl?.split('?')[0]?.toLowerCase();
+  const urlIsPdf = cleanUrl?.endsWith('.pdf');
+  
+  const isPdf = propIsPdf !== undefined ? propIsPdf : urlIsPdf;
+  const isImage = !isPdf;
+
+  console.log('PdfEditor Debug:', { pdfUrl, cleanUrl, isPdf, isImage, propIsPdf });
 
   // Initialize canvas once on mount
   useEffect(() => {
@@ -40,8 +50,9 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
 
     try {
       const fabricCanvas = new fabric.Canvas(canvasRef.current, {
-        width: 800,
-        height: 600,
+        width: pdfDimensions.width,
+        height: pdfDimensions.height,
+        backgroundColor: 'rgba(0,0,0,0)' // Transparent
       });
 
       // Enable drawing mode and set up brush for Fabric v6
@@ -74,15 +85,10 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
     };
   }, []); // Empty dependencies - only run once on mount
 
-  // Save current annotations before unmounting or changing specific dependencies if needed
-  // ideally we save on page change.
-
   // Restore annotations when page changes
   useEffect(() => {
     if (canvas) {
         canvas.clear();
-        // Set dimensions first if we have them (they come from onPageLoadSuccess usually, but we might have them cached)
-        // Actually dimensions update in another effect.
         
         const savedJSON = pageAnnotations[currentPage];
         if (savedJSON) {
@@ -100,12 +106,12 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
     }
   }, [currentPage, canvas]); // Run when page changes
 
-  // Update canvas dimensions when PDF loads
+  // Update canvas dimensions when dimensions change
   useEffect(() => {
     if (canvas && pdfDimensions.width > 0 && pdfDimensions.height > 0) {
       canvas.setWidth(pdfDimensions.width);
       canvas.setHeight(pdfDimensions.height);
-      canvas.calcOffset(); // Recalculate canvas offset for proper mouse positioning
+      canvas.calcOffset();
       canvas.renderAll();
     }
   }, [canvas, pdfDimensions.width, pdfDimensions.height]);
@@ -135,6 +141,29 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
     });
   };
 
+  const onImageLoad = (e) => {
+      const { naturalWidth, naturalHeight } = e.target;
+      
+      // Calculate scale to fit within a reasonable workspace (standard laptop screen)
+      const MAX_WIDTH = 1000;
+      const MAX_HEIGHT = 800;
+      
+      let scale = 1;
+      if (naturalWidth > MAX_WIDTH || naturalHeight > MAX_HEIGHT) {
+         const scaleX = MAX_WIDTH / naturalWidth;
+         const scaleY = MAX_HEIGHT / naturalHeight;
+         scale = Math.min(scaleX, scaleY);
+      }
+
+      const finalWidth = naturalWidth * scale;
+      const finalHeight = naturalHeight * scale;
+
+      setPdfDimensions({
+          width: finalWidth,
+          height: finalHeight
+      });
+  };
+
   const handleUndo = () => {
     if (canvas) {
       const objects = canvas.getObjects();
@@ -155,8 +184,6 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
   const saveCurrentPageAnnotations = () => {
       if (canvas) {
           const json = canvas.toJSON();
-          // specific check if there are meaningful objects? 
-          // canvas.toJSON always returns an object. "objects" array is empty if clear.
           setPageAnnotations(prev => ({
               ...prev,
               [currentPage]: json
@@ -168,15 +195,73 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
   const handleSave = async () => {
     if (!canvas) return;
 
-    // Save the CURRENT page's annotations first to ensure latest state is captured
+    // Save the CURRENT page's annotations first
     const currentJson = canvas.toJSON();
-    // We don't strictly need to update state here if we use local variable, 
-    // but useful to sync state. 
-    // However, for the loop below, we can construct a merged map.
     const allAnnotations = { ...pageAnnotations, [currentPage]: currentJson };
 
     setIsLoading(true);
     try {
+        if (isPdf) {
+            await handleSavePdf(allAnnotations);
+        } else {
+            // For Images, we only support single page anyway for now (Page 1)
+            await handleSaveImage(currentJson);
+        }
+    } catch (error) {
+      console.error('Error saving annotations:', error);
+      alert('Failed to save annotations. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveImage = async (annotationsJson) => {
+      const { width, height } = pdfDimensions;
+      
+      const tempCanvasEl = document.createElement('canvas');
+      tempCanvasEl.width = width;
+      tempCanvasEl.height = height;
+      
+      const staticCanvas = new fabric.StaticCanvas(tempCanvasEl, {
+          width: width,
+          height: height
+      });
+
+      // Load original image as background
+      await new Promise((resolve, reject) => {
+          fabric.FabricImage.fromURL(pdfUrl, { crossOrigin: 'anonymous' }).then((img) => {
+              // Scale image to match canvas if needed, but here we set canvas to match image
+              img.scaleToWidth(width);
+              staticCanvas.backgroundImage = img;
+              staticCanvas.renderAll();
+              resolve();
+          }).catch(reject);
+      });
+
+      // Load Annotations
+      if (annotationsJson.objects && annotationsJson.objects.length > 0) {
+          try {
+              const enlivenedObjects = await fabric.util.enlivenObjects(annotationsJson.objects);
+              enlivenedObjects.forEach((obj) => {
+                  obj.setCoords();
+                  staticCanvas.add(obj);
+              });
+              staticCanvas.renderAll();
+          } catch (err) {
+              console.error('Error enlivening objects for image:', err);
+          }
+      }
+
+      // Export to Blob
+      const dataUrl = staticCanvas.toDataURL({ format: 'png', quality: 0.9 });
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      
+      await onSave(blob);
+      staticCanvas.dispose();
+  };
+
+  const handleSavePdf = async (allAnnotations) => {
       // Fetch the original PDF
       const response = await fetch(pdfUrl);
       const pdfBytes = await response.arrayBuffer();
@@ -185,34 +270,20 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
       const pdfDoc = await PDFDocument.load(pdfBytes);
       const pages = pdfDoc.getPages();
       
-      // Iterate through all pages that have annotations
       console.log('Starting PDF save. Total annotated pages identified:', Object.keys(allAnnotations).length);
 
       for (const [pageIndexStr, json] of Object.entries(allAnnotations)) {
           const pageIndex = parseInt(pageIndexStr, 10);
-          console.log(`Processing Page ${pageIndex}. Objects count: ${json.objects ? json.objects.length : 0}`);
           
-          if (!json.objects || json.objects.length === 0) {
-              console.log(`Skipping Page ${pageIndex} (no objects)`);
-              continue; 
-          }
+          if (!json.objects || json.objects.length === 0) continue;
 
           const pdfPage = pages[pageIndex - 1]; // 1-based index from UI
-          if (!pdfPage) {
-              console.warn(`Page ${pageIndex} not found in PDF document.`);
-              continue;
-          }
+          if (!pdfPage) continue;
 
-          // We need the dimensions. We can get them from the pdfPage itself.
           const { width, height } = pdfPage.getSize();
-          
-          // Create a static canvas to render this page's annotations
-          // We'll mimic the size used in the UI (scale 1.5)
           const targetWidth = width * 1.5;
           const targetHeight = height * 1.5;
 
-          // In Node/invisible mode we can't easily make a DOM canvas. 
-          // But we are in browser. We can make a hidden canvas.
           const tempCanvasEl = document.createElement('canvas');
           tempCanvasEl.width = targetWidth;
           tempCanvasEl.height = targetHeight;
@@ -222,11 +293,9 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
               height: targetHeight
           });
 
-          // Manual Enliven approach to securely restore objects - Fabric v6 Promise compatible
           if (json.objects && json.objects.length > 0) {
               try {
                   const enlivenedObjects = await fabric.util.enlivenObjects(json.objects);
-                  
                   if (enlivenedObjects.length === 0) {
                       console.warn(`Page ${pageIndex}: Failed to enliven objects.`);
                   } else {
@@ -241,16 +310,13 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
               }
           }
 
-          // Export to high-res PNG for embedding
           const annotationsDataURL = staticCanvas.toDataURL({
               format: 'png',
               quality: 1,
               multiplier: 2 
           });
 
-          // Convert Data URI to ArrayBuffer for pdf-lib compatibility
           const pngImageBytes = await fetch(annotationsDataURL).then(res => res.arrayBuffer());
-
           const annotationsImg = await pdfDoc.embedPng(pngImageBytes);
           
           pdfPage.drawImage(annotationsImg, {
@@ -259,25 +325,17 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
               width: width,
               height: height,
           });
+          
+          staticCanvas.dispose();
       }
 
-      // Save the modified PDF
       const modifiedPdfBytes = await pdfDoc.save();
       const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
-
       await onSave(blob);
-    } catch (error) {
-      console.error('Error saving PDF annotations:', error);
-      alert('Failed to save annotations. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const changePage = (offset) => {
-    // Save current page annotations before switching
     saveCurrentPageAnnotations();
-    
     setCurrentPage((prevPage) => {
       const newPage = prevPage + offset;
       return Math.max(1, Math.min(newPage, numPages || 1));
@@ -289,7 +347,9 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
       <div className="flex h-full w-full max-w-7xl flex-col bg-white">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-6 py-4">
-          <h2 className="text-xl font-semibold text-gray-900">Edit Draft Map</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+              Edit {isPdf ? 'Document' : 'Image'}
+          </h2>
           <div className="flex items-center gap-3">
             <button
               onClick={onCancel}
@@ -352,33 +412,47 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
           </div>
         </div>
 
-        {/* PDF Viewer with Canvas Overlay */}
+        {/* Viewer with Canvas Overlay */}
         <div className="flex-1 overflow-auto bg-gray-100 p-6">
           <div className="flex justify-center">
             <div className="relative inline-block" ref={pageRef}>
               <div className="relative">
-                <Document
-                  file={pdfUrl}
-                  onLoadSuccess={onDocumentLoadSuccess}
-                  loading={
-                    <div className="flex items-center justify-center py-20">
-                      <div className="text-gray-600">Loading PDF...</div>
-                    </div>
-                  }
-                  error={
-                    <div className="flex items-center justify-center py-20">
-                      <div className="text-red-600">Failed to load PDF</div>
-                    </div>
-                  }
-                >
-                  <Page
-                    pageNumber={currentPage}
-                    scale={1.5}
-                    onLoadSuccess={onPageLoadSuccess}
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
-                  />
-                </Document>
+                {isPdf ? (
+                    <Document
+                        file={pdfUrl}
+                        onLoadSuccess={onDocumentLoadSuccess}
+                        loading={
+                            <div className="flex items-center justify-center py-20">
+                                <div className="text-gray-600">Loading PDF...</div>
+                            </div>
+                        }
+                        error={
+                            <div className="flex items-center justify-center py-20">
+                                <div className="text-red-600">Failed to load PDF</div>
+                            </div>
+                        }
+                    >
+                        <Page
+                            pageNumber={currentPage}
+                            scale={1.5}
+                            onLoadSuccess={onPageLoadSuccess}
+                            renderTextLayer={false}
+                            renderAnnotationLayer={false}
+                        />
+                    </Document>
+                ) : (
+                    <img 
+                        src={pdfUrl} 
+                        onLoad={onImageLoad}
+                        style={{ 
+                            display: 'block', 
+                            maxWidth: 'none',
+                            width: `${pdfDimensions.width}px`,
+                            height: `${pdfDimensions.height}px`
+                        }} 
+                        alt="To annotate"
+                    />
+                )}
 
                 {/* Drawing Canvas Overlay */}
                 <div
@@ -396,8 +470,8 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
           </div>
         </div>
 
-        {/* Page Navigation */}
-        {numPages && numPages > 1 && (
+        {/* Page Navigation (PDF Only) */}
+        {isPdf && numPages && numPages > 1 && (
           <div className="flex items-center justify-center gap-4 border-t border-gray-200 bg-gray-50 px-6 py-4">
             <button
               onClick={() => changePage(-1)}
@@ -425,6 +499,7 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
 
 PdfEditor.propTypes = {
   pdfUrl: PropTypes.string.isRequired,
+  isPdf: PropTypes.bool,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
 };

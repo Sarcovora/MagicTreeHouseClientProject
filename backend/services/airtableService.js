@@ -165,16 +165,26 @@ const processRecord = (record) => {
 
         if (value !== undefined) {
             // Handle attachments specifically: extract URL(s)
-            if (Array.isArray(value) && value[0]?.url) { // Check if it looks like an attachment array
-                // Multi-image fields: always return as array
-                if (['plantingPhotoUrls', 'beforePhotoUrls', 'propertyImageUrls', 'activeCarbonShapefiles'].includes(apiKey)) {
-                    processed[apiKey] = value.map(att => att.url);
-                } else if (value.length === 1) {
-                    // Single attachment fields: return just the URL
-                    processed[apiKey] = value[0].url;
+            if (Array.isArray(value) && value[0]?.url) {
+                // Determine if this is a "Photo" field that expects simple string URLs (for backward comp with Carousel)
+                const isPhotoField = ['plantingPhotoUrls', 'beforePhotoUrls', 'propertyImageUrls'].includes(apiKey);
+                
+                if (isPhotoField) {
+                     processed[apiKey] = value.map(att => att.url);
                 } else {
-                    // Multiple attachments in a non-multi field: return array of URLs
-                    processed[apiKey] = value.map(att => att.url);
+                     // For Documents (Maps, Docs, Shapefiles), return full metadata for intelligent handling (versioning, types)
+                     // Always return as Array of objects
+                     processed[apiKey] = value.map(att => ({
+                         url: att.url, 
+                         filename: att.filename, 
+                         id: att.id,
+                         type: att.type
+                     }));
+                     
+                     // For backward compatibility (if any logic expects a single property not array),
+                     // we might need to handle single-value fields, but our frontend ensuresArray mostly.
+                     // The only potential break is if frontend accesses project.draftMapUrl direct expecting a string.
+                     // But we are updating frontend.
                 }
             } else {
                 processed[apiKey] = value;
