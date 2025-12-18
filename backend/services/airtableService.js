@@ -623,50 +623,53 @@ const deleteSeasonOption = async (seasonName) => {
         ? seasonField.options.choices
         : [];
 
-    // Deep clone the entire options object so we preserve Airtable-specific flags.
-    const updatedOptions = JSON.parse(JSON.stringify(seasonField.options || {}));
-
-    // Remove the target choice while preserving id/name/color/icon/etc.
-    updatedOptions.choices = originalChoices
+    // --- FIX 2: Use Field-Specific Endpoint & Strict Sanitization ---
+    // 1. Rebuild choices array - removing 'icon' which causes validation errors if invalid
+    const newChoices = originalChoices
         .filter(choice => choice.id !== targetChoice.id)
-        .map(choice => ({ ...choice }));
+        .map(choice => {
+            const clean = {
+                id: choice.id,
+                name: choice.name,
+            };
+            // Only include color if it's a valid string (Airtable strictness)
+            if (choice.color && typeof choice.color === 'string') {
+                clean.color = choice.color;
+            }
+            return clean;
+        });
 
-    if (updatedOptions.choices.length !== originalChoices.length - 1) {
-        throw createServiceError(
-            `Failed to prepare updated options for season '${trimmedSeason}'.`,
-            500
-        );
-    }
+    const updatedOptions = {
+        choices: newChoices
+    };
 
-    // Remove the choice from choiceOrder if Airtable has it defined.
-    if (Array.isArray(updatedOptions.choiceOrder)) {
-        updatedOptions.choiceOrder = updatedOptions.choiceOrder.filter(choiceId => choiceId !== targetChoice.id);
-        if (!updatedOptions.choiceOrder.length) {
-            delete updatedOptions.choiceOrder;
+    // 2. Handle choiceOrder if it exists
+    if (Array.isArray(seasonField.options?.choiceOrder)) {
+        const newOrder = seasonField.options.choiceOrder.filter(id => id !== targetChoice.id);
+        if (newOrder.length > 0) {
+            updatedOptions.choiceOrder = newOrder;
         }
     }
 
     console.log(
-        `Updated season options payload (removing '${trimmedSeason}'):`,
+        `Updated season options payload (removing '${trimmedSeason}') - using strict sanitization:`,
         JSON.stringify(updatedOptions, null, 2)
     );
 
     try {
+        // Attempt 2 Revision: Include 'name' and 'type' in the payload.
+        // Even for PATCH, Airtable Metadata API often complains if 'name' is missing, 
+        // or treats it as an "unknown" request if key identifiers are absent.
         const metadataPayload = {
             name: seasonField.name,
             type: seasonField.type,
             description: seasonField.description ?? undefined,
             options: updatedOptions,
         };
-        console.log('Metadata PATCH payload:', JSON.stringify({ fields: [metadataPayload] }, null, 2));
-        await metadataApi.patch(`/tables/${targetTable.id}`, {
-            fields: [
-                {
-                    id: seasonField.id,
-                    ...metadataPayload,
-                },
-            ],
-        });
+        console.log('Metadata Field PATCH payload:', JSON.stringify(metadataPayload, null, 2));
+        
+        // Target the specific FIELD endpoint
+        await metadataApi.patch(`/tables/${targetTable.id}/fields/${seasonField.id}`, metadataPayload);
 
         console.log(`Season option '${trimmedSeason}' removed from Airtable.`);
         return {

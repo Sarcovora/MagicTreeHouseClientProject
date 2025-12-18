@@ -141,10 +141,15 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
       // Get the PDF page as an image
       const pdfPageCanvas = pageRef.current.querySelector('.react-pdf__Page__canvas');
 
+      // Use actual pixel dimensions from the rendered canvas (handles high-DPI screens)
+      const pixelWidth = pdfPageCanvas.width;
+      const pixelHeight = pdfPageCanvas.height;
+      const scale = pixelWidth / pdfDimensions.width;
+
       // Create a temporary canvas to merge PDF page and annotations
       const mergeCanvas = document.createElement('canvas');
-      mergeCanvas.width = pdfDimensions.width;
-      mergeCanvas.height = pdfDimensions.height;
+      mergeCanvas.width = pixelWidth;
+      mergeCanvas.height = pixelHeight;
       const ctx = mergeCanvas.getContext('2d');
 
       // Draw PDF page
@@ -154,6 +159,7 @@ const PdfEditor = ({ pdfUrl, onSave, onCancel }) => {
       const annotationsDataURL = canvas.toDataURL({
         format: 'png',
         quality: 1,
+        multiplier: scale, // Scale annotations to match the PDF canvas resolution
       });
 
       const annotationsImg = new Image();
