@@ -607,6 +607,44 @@ export const deleteSeason = async (seasonId) => {
   }
 };
 
+export const getLandownerProject = async () => {
+  try {
+    const response = await apiClient.get('/projects/my-project');
+    if (!response?.data) {
+      return null;
+    }
+    return normalizeProjectRecord(response.data);
+  } catch (error) {
+    console.error(`API Call: getLandownerProject() -> Failed.`, error);
+    if (error.response?.status === 404) {
+        return null;
+    }
+    throw new Error(
+      error?.response?.data?.message ||
+      error?.message ||
+      'Failed to fetch landowner project.'
+    );
+  }
+};
+
+
+export const addDraftMapComment = async (projectId, comment) => {
+  try {
+    const response = await apiClient.post(`/projects/${projectId}/draft-map/comments`, { comment });
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || 'Failed to add comment');
+    }
+    // Return relevant data, possibly updated project
+    return normalizeProjectRecord(response.data.project);
+  } catch (error) {
+    console.error(`API Call: addDraftMapComment(${projectId}) -> Failed.`, error);
+    throw new Error(
+      error?.response?.data?.message ||
+      error?.message ||
+      'Failed to submit comment.'
+    );
+  }
+};
 
   export const getFormDetails = async (formId) => {
       await simulateDelay();
@@ -657,7 +695,9 @@ const apiService = {
     deleteProject,
     uploadProjectDocument,
     deleteProjectDocument,
-    deleteSeason, // Add deleteSeason here
+    deleteSeason, 
+    getLandownerProject,
+  addDraftMapComment, // Export new function
   getFormDetails,
     getUserProfile,
   };

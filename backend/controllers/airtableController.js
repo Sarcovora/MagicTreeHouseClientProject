@@ -123,9 +123,53 @@ const handleDeleteSeason = asyncHandler(async (req, res) => {
     }
 });
 
+const handleGetLandownerProject = asyncHandler(async (req, res) => {
+    // req.user is set by authentication middleware
+    if (!req.user || !req.user.email) {
+        return res.status(401).json({ message: "User email not found in token." });
+    }
+
+    const { email } = req.user;
+    try {
+        const project = await airtableService.findProjectByEmail(email);
+        if (!project) {
+            return res.status(404).json({ message: "No project found for this email." });
+        }
+        res.json(project);
+    } catch (error) {
+        console.error(`Error fetching project for email ${email}:`, error);
+        res.status(500).json({ message: "Failed to fetch landowner project." });
+    }
+});
+
 const handleUploadProjectDocument = asyncHandler(async (req, res) => {
     const { recordId } = req.params;
     const { documentType, filename, contentType, data } = req.body || {};
+
+    // --- Permission Check ---
+    // If not admin, ensure they own the project AND are only uploading 'draftMap'
+    if (req.user && !req.user.admin) { // Assuming auth middleware sets req.user.admin or similar
+        // Note: req.userProfile might be set by requireAdmin, but for mixed routes we rely on token or lookup
+        // Ideally, we should fetch permission first.
+        // Let's assume non-admin users can ONLY touch their own project.
+        
+        // 1. Verify ownership if we haven't already (e.g., via middleware). 
+        // For simplicity, let's fetch the project by email and compare IDs
+        if (!req.user.email) {
+             return res.status(401).json({ message: "Unauthorized." });
+        }
+        
+        // Strict check: Landowners can ONLY upload 'draftMap'
+        if (documentType !== 'draftMap') {
+            return res.status(403).json({ message: "Landowners can only edit the Draft Map." });
+        }
+
+        const project = await airtableService.findProjectByEmail(req.user.email);
+        if (!project || project.id !== recordId) {
+            return res.status(403).json({ message: "Access denied to this project." });
+        }
+    }
+    // --- End Permission Check ---
 
     if (!recordId) {
         return res.status(400).json({ message: 'Record ID parameter is required.' });
@@ -137,7 +181,34 @@ const handleUploadProjectDocument = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: 'File data is required.' });
     }
 
-    const safeName = sanitizeFilename(filename || `${documentType}-${Date.now()}`);
+    // --- Auto-Renaming for Draft Maps ---
+    // User Requirement: [Owner Last Name or Site Name]_DraftMap_v0 (v1, v2...)
+    let finalFilename = filename;
+    
+    if (documentType === 'draftMap') {
+        try {
+            // Need current project state to calculate version
+            const currentProject = await airtableService.getProjectDetails(recordId);
+            const ownerName = currentProject.ownerLastName || currentProject.siteName || 'Project';
+            const safeOwnerName = ownerName.replace(/[^a-zA-Z0-9]/g, '');
+            
+            const existingAttachments = currentProject.draftMap || [];
+            // Version = count of existing attachments (0 if none exist, 1 if 1 exists, etc.)
+            const version = existingAttachments.length;
+            
+            // finalFilename: OwnerName_DraftMap_vX.pdf
+            // We assume the extension from the original filename or contentType
+            const originalExt = filename?.split('.').pop() || (contentType === 'application/pdf' ? 'pdf' : 'dat');
+            
+            finalFilename = `${safeOwnerName}_DraftMap_v${version}.${originalExt}`;
+            console.log(`[DraftMap] Renaming upload to: ${finalFilename} (Version ${version})`);
+        } catch (err) {
+            console.error("Failed to generate versioned filename:", err);
+            // Fallback to original name if fetch fails
+        }
+    }
+
+    const safeName = sanitizeFilename(finalFilename || `${documentType}-${Date.now()}`);
     const cleanedContentType = contentType || 'application/octet-stream';
 
     if (!cloudinaryService.isConfigured()) {
@@ -168,7 +239,7 @@ const handleUploadProjectDocument = asyncHandler(async (req, res) => {
             hosted,
         } = await airtableService.attachDocumentToProject(recordId, documentType, {
             url: attachmentUrl,
-            filename: filename || safeName,
+            filename: finalFilename || safeName, // Use the versioned name here
             contentType: cleanedContentType,
         });
 
@@ -209,6 +280,13 @@ const handleUploadProjectDocument = asyncHandler(async (req, res) => {
 const handleDeleteProjectDocument = asyncHandler(async (req, res) => {
     const { recordId, documentType } = req.params;
 
+    // --- Permission Check ---
+    if (req.user && !req.user.admin) {
+        // User requested: "make it so that the landowner cannot delete anything"
+        return res.status(403).json({ message: "Landowners cannot delete documents. Please upload a new version instead." });
+    }
+    // --- End Permission Check ---
+
     if (!recordId) {
         return res.status(400).json({ message: 'Record ID parameter is required.' });
     }
@@ -229,6 +307,64 @@ const handleDeleteProjectDocument = asyncHandler(async (req, res) => {
     }
 });
 
+const handleAddDraftMapComment = asyncHandler(async (req, res) => {
+    const { recordId } = req.params;
+    const { comment } = req.body;
+
+    // --- Permission Check ---
+    // User requested: "I want only the landwoner to be able to send comments to the admin."
+    // Admin should view but NOT send.
+    if (req.user && req.user.admin) {
+        // req.user.admin is likely boolean true/false.
+        // If checking strictly for admin attempting to POST:
+        return res.status(403).json({ message: "Admins cannot post comments here." });
+    }
+    
+    // Landowner check:
+    if (!req.user || !req.user.email) {
+        return res.status(401).json({ message: "Unauthorized." });
+    }
+    const project = await airtableService.findProjectByEmail(req.user.email);
+    if (!project || project.id !== recordId) {
+        return res.status(403).json({ message: "Access denied to this project." });
+    }
+    // --- End Permission Check ---
+
+    if (!comment || typeof comment !== 'string' || comment.trim() === '') {
+        return res.status(400).json({ message: "Comment is required." });
+    }
+
+    try {
+        // 1. Fetch current project to get existing comments
+        const currentProject = await airtableService.getProjectDetails(recordId);
+        const existingComments = currentProject.draftMapComments || "";
+
+        // 2. Format new comment entry
+        const dateStr = new Date().toLocaleString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', hour12: true
+        });
+        const newEntry = `[${dateStr}] ${comment.trim()}\n\n`;
+
+        // 3. Prepend to existing text
+        const updatedComments = newEntry + existingComments;
+
+        // 4. Update Airtable
+        const updatedProject = await airtableService.updateProject(recordId, {
+            draftMapComments: updatedComments
+        });
+
+        res.json({
+            success: true,
+            project: updatedProject
+        });
+
+    } catch (error) {
+        console.error(`Error adding draft map comment for ${recordId}:`, error);
+        res.status(500).json({ message: "Failed to add comment." });
+    }
+});
+
 module.exports = {
     handleGetAllSeasons,
     handleGetProjectsBySeason,
@@ -239,4 +375,6 @@ module.exports = {
     handleDeleteSeason,
     handleUploadProjectDocument,
     handleDeleteProjectDocument,
+    handleGetLandownerProject,
+    handleAddDraftMapComment,
 };

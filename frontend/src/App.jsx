@@ -64,6 +64,7 @@ function App() {
         >
            <Route index element={<Navigate to="dashboard" replace />} />
            <Route path="dashboard" element={<LandownerDashboard />} />
+           <Route path="project/:id" element={<ProjectDetail />} />
            <Route path="map" element={<Map />} />
            <Route path="gallery" element={<PhotoGallery />} />
            <Route path="forms" element={<Forms />} />

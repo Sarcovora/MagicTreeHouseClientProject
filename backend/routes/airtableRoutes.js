@@ -37,9 +37,15 @@ router.post('/projects', requireAdmin, airtableController.handleAddProject);
 // Corresponds to: UpdateProject(recordId, projectData)
 router.patch('/projects/:recordId', requireAdmin, airtableController.handleUpdateProject);
 
-// Upload/replace a project document (attachments)
-router.post('/projects/:recordId/documents', requireAdmin, airtableController.handleUploadProjectDocument);
-// Delete a project document (attachments)
+// Upload/replace a project document (attachments) - Permissions handled in controller
+router.post('/projects/:recordId/documents', airtableController.handleUploadProjectDocument);
+// Delete a project document (attachments) - Permissions handled in controller
 router.delete('/projects/:recordId/documents/:documentType', airtableController.handleDeleteProjectDocument);
+
+// GET project associated with the logged-in landowner
+router.get('/projects/my-project', airtableController.handleGetLandownerProject);
+
+// POST a comment to the draft map - Landowner interaction
+router.post('/projects/:recordId/draft-map/comments', airtableController.handleAddDraftMapComment);
 
 module.exports = router;

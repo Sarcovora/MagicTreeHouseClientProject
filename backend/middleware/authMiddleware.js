@@ -59,7 +59,20 @@ const authenticateRequest = async (req, res, next) => {
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(token);
-    req.user = decodedToken;
+    
+    // Fetch full user profile to get admin status
+    try {
+      const userDoc = await admin.firestore().collection("users").doc(decodedToken.uid).get();
+      if (userDoc.exists) {
+        req.user = { ...decodedToken, ...userDoc.data(), admin: userDoc.data().isAdmin };
+      } else {
+        req.user = decodedToken;
+      }
+    } catch (profileError) {
+       console.warn("[Auth] Failed to fetch user profile:", profileError);
+       req.user = decodedToken;
+    }
+
     next();
   } catch (error) {
     console.error("[Auth] Invalid token:", error);

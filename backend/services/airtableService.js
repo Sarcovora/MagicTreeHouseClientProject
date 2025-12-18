@@ -95,6 +95,7 @@ const FIELD_MAP = {
         participationStatus: 'Participation status',
         carbonDocs: 'Carbon docs (notarized)',
         postPlantingReports: 'Post-Planting Reports',
+        draftMapComments: 'Draft Map Comments',
     },
     // Input: Airtable Field Name or ID -> Output: API Key
     airtableToApi: {
@@ -138,6 +139,7 @@ const FIELD_MAP = {
         'Quiz Score - Post-planting': 'quizScorePostPlanting',
         'Carbon docs (notarized)': 'carbonDocs',
         'Post-Planting Reports': 'postPlantingReports',
+        'Draft Map Comments': 'draftMapComments',
     }
 };
 
@@ -301,6 +303,30 @@ const getProjectDetails = async (recordId) => {
             throw new Error('Project not found.');
         }
         throw new Error(`Failed to fetch project details: ${error.message}`);
+    }
+};
+
+const findProjectByEmail = async (email) => {
+    if (!email) throw new Error('Email is required to find project.');
+    
+    console.log(`Searching for project with email: ${email}`);
+    // Normalized check: case-insensitive
+    const emailField = FIELD_MAP.apiToAirtable.email || 'Email';
+    const filterFormula = `LOWER({${emailField}}) = "${email.toLowerCase()}"`;
+
+    try {
+        const records = await table.select({
+            maxRecords: 1,
+            filterByFormula: filterFormula,
+        }).firstPage();
+
+        if (records.length === 0) {
+            return null;
+        }
+        return processRecord(records[0]);
+    } catch (error) {
+        console.error(`Error finding project by email ${email}:`, error);
+        throw new Error(`Failed to find project by email.`);
     }
 };
 
@@ -814,4 +840,5 @@ module.exports = {
     deleteSeasonOption,
     attachDocumentToProject,
     detachDocumentFromProject,
+    findProjectByEmail,
 };

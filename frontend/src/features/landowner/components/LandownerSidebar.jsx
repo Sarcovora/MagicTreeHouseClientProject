@@ -21,10 +21,7 @@ const LandownerSidebar = () => {
   const displayName = profile?.username || profile?.email || "Landowner";
 
   const menuItems = [
-    { icon: <TreePine size={24} />, label: "Properties", path: "/properties" },
-    { icon: <FormInput size={24} />, label: "Forms", path: "/forms" },
-    { icon: <Map size={24} />, label: "Map", path: "/map" },
-    { icon: <Image size={24} />, label: "Photos", path: "/gallery" },
+    { icon: <TreePine size={24} />, label: "Dashboard", path: "/landowner/dashboard" },
   ];
 
   const isActive = (path) => location.pathname.startsWith(path);

@@ -11,6 +11,7 @@ import {
   Plus,
   Trash2,
   User,
+  MessageSquare,
 } from "lucide-react";
 import Carousel from "../../../components/common/Carousel";
 import InfoCard from "../../../components/common/InfoCard";
@@ -18,6 +19,7 @@ import InfoField from "../../../components/common/InfoField";
 import DateSelectionModal from "../../../components/common/DateSelectionModal";
 import PdfEditor from "../components/PdfEditor";
 import apiService from "../../../services/apiService";
+import { useAuth } from "../../auth/AuthProvider";
 
 const formatDate = (value) => {
   if (!value) {
@@ -81,6 +83,56 @@ const DOCUMENT_SLOTS = [
   },
 ];
 
+// --- Draft Map Comment Modal ---
+const DraftMapCommentModal = ({ isOpen, onClose, onSubmit, isSubmitting }) => {
+  const [comment, setComment] = useState("");
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(comment);
+    setComment("");
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl animate-fade-in-up">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">Add Draft Map Comment</h3>
+        <form onSubmit={handleSubmit}>
+          <textarea
+            className="w-full rounded-md border border-gray-300 p-3 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+            rows={4}
+            placeholder="Enter your feedback regarding the draft map..."
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            required
+            disabled={isSubmitting}
+          />
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-70"
+              disabled={isSubmitting}
+            >
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Submit Comment
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const DocumentTile = ({
   slot,
   files,
@@ -89,6 +141,9 @@ const DocumentTile = ({
   onEdit,
   isUploading,
   isDeleting,
+  isAdmin,
+  comments, // String blob from Airtable
+  onAddComment, // Handler
 }) => {
   const fileInputRef = useRef(null);
   const [selectedVersionIndex, setSelectedVersionIndex] = useState(null);
@@ -119,7 +174,22 @@ const DocumentTile = ({
   const isPdf = fileUrl.includes('.pdf') || (slot.key === 'draftMap' && fileUrl.includes('airtable'));
   const canEdit = slot.key === 'draftMap' && files.length > 0;
 
+  // Landowners can only upload versions if a file already exists. Initial upload is Admin only.
+  const canModify = isAdmin || (slot.key === 'draftMap' && files.length > 0);
+  const showUpload = files.length === 0 && canModify;
+  
   if (files.length === 0 || isUploading) {
+      if (!canModify && files.length === 0) {
+        return (
+             <div className="flex h-full flex-col justify-between rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50/50 p-4 text-center">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">{slot.label}</p>
+                  <p className="mt-2 text-xs text-gray-500">{slot.description}</p>
+                  <p className="mt-4 text-xs italic text-gray-400">No document uploaded.</p>
+                </div>
+             </div>
+        );
+      }
     return (
       <div className="flex h-full flex-col justify-between rounded-2xl border-2 border-dashed border-green-500/40 bg-green-50/50 p-4 text-center">
         <div>
@@ -229,6 +299,8 @@ const DocumentTile = ({
             </span>
           </button>
         )}
+        {/* Only show Replace button if user has permission */}
+        {(isAdmin || slot.key === 'draftMap') && (
         <button
           type="button"
           onClick={openPicker}
@@ -248,9 +320,12 @@ const DocumentTile = ({
               Deleting...
             </span>
           ) : (
-            "Replace"
+            (!isAdmin && slot.key === 'draftMap') ? "Upload New Version" : "Replace"
           )}
         </button>
+        )}
+        {/* Only allow deletion if Admin. User explicitly requested landowners CANNOT delete. */}
+        {isAdmin && (
         <button
           type="button"
           onClick={() => onDelete?.(slot)}
@@ -261,6 +336,8 @@ const DocumentTile = ({
         >
           Delete
         </button>
+        )}
+        {(isAdmin || slot.key === 'draftMap') && (
         <input
           id={inputId}
           type="file"
@@ -269,7 +346,35 @@ const DocumentTile = ({
           onChange={handleFileChange}
           disabled={isBusy}
         />
+        )}
       </div>
+
+      {/* Draft Map Comments Section */}
+      {slot.key === 'draftMap' && (
+        <div className="mt-4 border-t border-gray-100 pt-3">
+          {/* Admin View: Show most recent comment */}
+          {isAdmin && comments && (
+             <div className="rounded-md bg-yellow-50 p-3">
+                <p className="text-xs font-semibold text-yellow-800 mb-1">Latest Landowner Comment:</p>
+                <div className="text-xs text-yellow-700 whitespace-pre-wrap max-h-24 overflow-y-auto">
+                   {/* Extract first comment block (split by double newline usually) */}
+                   {comments.split('\n\n')[0]}
+                </div>
+             </div>
+          )}
+
+          {/* Landowner View: Add Comment Button */}
+          {!isAdmin && files.length > 0 && (
+            <button
+                onClick={() => onAddComment?.()}
+                className="mt-2 flex w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 active:scale-[0.98]"
+            >
+                <MessageSquare className="mr-2 h-4 w-4 text-gray-500" />
+                Add Comment / Feedback
+            </button>
+          )} 
+        </div>
+      )}
     </div>
   );
 };
@@ -314,6 +419,7 @@ const PhotoUploadButton = ({ label, slotKey, onUpload, isUploading }) => {
 
 
 const ProjectDetail = () => {
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const { id: projectId } = useParams();
   const [project, setProject] = useState(null);
@@ -349,6 +455,24 @@ const ProjectDetail = () => {
     }
   }, [projectId]);
 
+  // --- Comment Logic ---
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  const handleAddComment = async (comment) => {
+      setIsSubmittingComment(true);
+      try {
+          const updatedProject = await apiService.addDraftMapComment(projectId, comment);
+          setProject(updatedProject);
+          setIsCommentModalOpen(false);
+      } catch (err) {
+          console.error("Failed to add comment:", err);
+          setError("Failed to submit comment. Please try again.");
+      } finally {
+          setIsSubmittingComment(false);
+      }
+  };
+
   useEffect(() => {
     loadProjectDetails();
   }, [loadProjectDetails]);
@@ -378,6 +502,10 @@ const ProjectDetail = () => {
   };
 
   const handleGoBack = () => {
+    if (!isAdmin) {
+      navigate('/landowner/dashboard');
+      return;
+    }
     if (project?.seasonYear) {
       navigate(`/admin/seasons/${project.seasonYear}`);
       return;
@@ -760,6 +888,7 @@ const ProjectDetail = () => {
 
   return (
     <div className="bg-gray-50">
+      {isAdmin && (
       <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <button
@@ -782,6 +911,7 @@ const ProjectDetail = () => {
               <Edit className="mr-1 h-4 w-4" />
               Edit
             </Link>
+            {isAdmin && (
             <button
               onClick={handleDeleteProject}
               className="flex items-center rounded-lg px-3 py-1.5 text-sm text-red-600 transition hover:bg-red-50"
@@ -789,9 +919,11 @@ const ProjectDetail = () => {
               <Trash2 className="mr-1 h-4 w-4" />
               Delete
             </button>
+            )}
           </div>
         </div>
       </div>
+      )}
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 space-y-10">
         {error && (
@@ -817,7 +949,7 @@ const ProjectDetail = () => {
                   <p className="text-gray-500">No photos available</p>
                 </div>
               )}
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <PhotoUploadButton
                   label="Upload Planting Photo"
                   slotKey="plantingPhotoUrls"
@@ -851,7 +983,7 @@ const ProjectDetail = () => {
                   <p className="text-gray-500">No landowner submissions yet</p>
                 </div>
               )}
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <PhotoUploadButton
                   label="Upload Landowner Submission"
                   slotKey="propertyImageUrls"
@@ -995,32 +1127,6 @@ const ProjectDetail = () => {
             </InfoCard>
           </div>
         </div>
-        <div className="rounded-2xl bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold text-gray-900">
-            What should I expect?
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Seasonal timeline to help landowners prep for each stage.
-          </p>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {timelinePhases.map((phase) => (
-              <div
-                key={phase.title}
-                className="rounded-xl border border-gray-100 bg-green-50/60 p-5"
-              >
-                <h3 className="text-lg font-semibold text-green-900">
-                  {phase.title}
-                </h3>
-                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-gray-700">
-                  {phase.points.map((point) => (
-                    <li key={point}>{point}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
             Associated Documents
@@ -1044,6 +1150,9 @@ const ProjectDetail = () => {
                 onEdit={handleDocumentEdit}
                 isUploading={docUploadState.key === slot.key}
                 isDeleting={docDeleteState.key === slot.key}
+                isAdmin={isAdmin}
+                comments={slot.key === 'draftMap' ? project?.draftMapComments : null}
+                onAddComment={() => setIsCommentModalOpen(true)}
               />
             ))}
           </div>
@@ -1122,6 +1231,14 @@ const ProjectDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <DraftMapCommentModal 
+        isOpen={isCommentModalOpen}
+        onClose={() => setIsCommentModalOpen(false)}
+        onSubmit={handleAddComment}
+        isSubmitting={isSubmittingComment}
+      />
 
       <DateSelectionModal
         isOpen={!!pendingPhotoUpload}
