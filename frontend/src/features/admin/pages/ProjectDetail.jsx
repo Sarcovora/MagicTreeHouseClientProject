@@ -539,7 +539,7 @@ const ProjectDetail = () => {
     try {
       await apiService.uploadProjectDocument(projectId, slotKey, file);
       // Give Airtable a brief window to finish hosting (especially PDFs) before reloading
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
       await loadProjectDetails();
     } catch (uploadErr) {
       console.error("Failed to upload document:", uploadErr);
@@ -601,10 +601,14 @@ const ProjectDetail = () => {
       setPdfEditorState({ isOpen: false, pdfUrl: null, documentType: null });
 
       // Upload the new version
+      console.log(`Uploading annotated PDF: ${newFileName}, size: ${blob.size} bytes`);
       await handleDocumentUpload(pdfEditorState.documentType, file);
+      
+      // Explicit check if upload updated the state (although handleDocumentUpload handles its own state/errors)
+      // We assume success if no error thrown.
     } catch (error) {
       console.error('Failed to save annotated PDF:', error);
-      alert('Failed to save annotated PDF. Please try again.');
+      alert(`Failed to save annotated PDF: ${error.message || 'Unknown error'}`);
     }
   };
 
