@@ -159,9 +159,10 @@ const handleUploadProjectDocument = asyncHandler(async (req, res) => {
              return res.status(401).json({ message: "Unauthorized." });
         }
         
-        // Strict check: Landowners can ONLY upload 'draftMap'
-        if (documentType !== 'draftMap') {
-            return res.status(403).json({ message: "Landowners can only edit the Draft Map." });
+        // Strict check: Landowners can ONLY upload 'draftMap' or photos
+        const allowedTypes = ['draftMap', 'plantingPhotoUrls', 'beforePhotoUrls', 'propertyImageUrls'];
+        if (!allowedTypes.includes(documentType)) {
+            return res.status(403).json({ message: "Landowners can only edit the Draft Map or upload photos." });
         }
 
         const project = await airtableService.findProjectByEmail(req.user.email);

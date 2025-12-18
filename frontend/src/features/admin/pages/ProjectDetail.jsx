@@ -12,6 +12,7 @@ import {
   Trash2,
   User,
   MessageSquare,
+  Image as ImageIcon,
 } from "lucide-react";
 import Carousel from "../../../components/common/Carousel";
 import InfoCard from "../../../components/common/InfoCard";
@@ -20,6 +21,7 @@ import DateSelectionModal from "../../../components/common/DateSelectionModal";
 import PdfEditor from "../components/PdfEditor";
 import apiService from "../../../services/apiService";
 import { useAuth } from "../../auth/AuthProvider";
+import { useToast } from "../../../contexts/ToastContext";
 
 const formatDate = (value) => {
   if (!value) {
@@ -469,6 +471,7 @@ const ProjectDetail = () => {
   const [lightboxImage, setLightboxImage] = useState(null);
   const [pendingPhotoUpload, setPendingPhotoUpload] = useState(null); // { file, slotKey }
   const [pdfEditorState, setPdfEditorState] = useState({ isOpen: false, pdfUrl: null, documentType: null, filename: null });
+  const { addToast } = useToast();
 
   const loadProjectDetails = useCallback(async () => {
     if (!projectId) {
@@ -503,9 +506,11 @@ const ProjectDetail = () => {
           const updatedProject = await apiService.addDraftMapComment(projectId, comment);
           setProject(updatedProject);
           setIsCommentModalOpen(false);
+          addToast("Comment added successfully", "success");
       } catch (err) {
           console.error("Failed to add comment:", err);
           setError("Failed to submit comment. Please try again.");
+          addToast("Failed to submit comment", "error");
       } finally {
           setIsSubmittingComment(false);
       }
@@ -1010,8 +1015,11 @@ const ProjectDetail = () => {
                   onImageClick={openLightbox}
                 />
               ) : (
-                <div className="mb-4 flex aspect-[4/3] max-h-[360px] items-center justify-center rounded-lg bg-gray-200 shadow-sm lg:mb-6">
-                  <p className="text-gray-500">No photos available</p>
+                <div className="mb-4 lg:mb-6 relative">
+                  <div className="flex aspect-[4/3] lg:aspect-[3/2] w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/50 text-gray-400 shadow-sm">
+                    <ImageIcon className="mb-2 h-10 w-10 opacity-50" />
+                    <p className="text-sm font-medium">No photos available</p>
+                  </div>
                 </div>
               )}
               <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -1044,8 +1052,11 @@ const ProjectDetail = () => {
                   onImageClick={openLightbox}
                 />
               ) : (
-                <div className="mb-4 flex aspect-[4/3] max-h-[360px] items-center justify-center rounded-lg bg-gray-200 shadow-sm lg:mb-6">
-                  <p className="text-gray-500">No landowner submissions yet</p>
+                <div className="mb-4 lg:mb-6 relative">
+                   <div className="flex aspect-[4/3] lg:aspect-[3/2] w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/50 text-gray-400 shadow-sm">
+                      <ImageIcon className="mb-2 h-10 w-10 opacity-50" />
+                      <p className="text-sm font-medium">No landowner submissions yet</p>
+                   </div>
                 </div>
               )}
               <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -1250,15 +1261,15 @@ const ProjectDetail = () => {
                       <img
                         src={url}
                         alt={`Planting or before photo ${idx + 1}`}
-                        className="h-24 w-full object-cover cursor-pointer"
+                        className="h-24 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                       />
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="mt-2 text-sm text-gray-500">
-                  No planting or before photos yet.
-                </p>
+                <div className="mt-3 flex h-24 w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 text-sm text-gray-400">
+                  No planting or before photos
+                </div>
               )}
             </div>
 
@@ -1282,15 +1293,15 @@ const ProjectDetail = () => {
                       <img
                         src={url}
                         alt={`Landowner submission ${idx + 1}`}
-                        className="h-24 w-full object-cover cursor-pointer"
+                        className="h-24 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                       />
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="mt-2 text-sm text-gray-500">
-                  No landowner submissions yet.
-                </p>
+                 <div className="mt-3 flex h-24 w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 text-sm text-gray-400">
+                   No landowner submissions
+                 </div>
               )}
             </div>
           </div>
