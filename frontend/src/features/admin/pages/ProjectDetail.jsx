@@ -775,7 +775,7 @@ const ProjectDetail = () => {
         </h2>
         <p className="mb-6 text-gray-600">{error}</p>
         <button
-          onClick={() => navigate("/admin/dashboard")}
+          onClick={() => navigate(isAdmin ? "/admin/dashboard" : "/landowner/dashboard")}
           className="mx-auto mt-6 flex items-center justify-center rounded-lg bg-gray-200 px-4 py-2 text-sm hover:bg-gray-300"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -973,24 +973,6 @@ const ProjectDetail = () => {
             <ArrowLeft className="mr-1 h-4 w-4" />
               Back
             </button>
-          <div className="flex space-x-2">
-            <Link
-              to={`/admin/project/${projectId}/edit`}
-              className="flex items-center rounded-lg px-3 py-1.5 text-sm text-gray-700 transition hover:bg-gray-100"
-            >
-              <Edit className="mr-1 h-4 w-4" />
-              Edit
-            </Link>
-            {isAdmin && (
-            <button
-              onClick={handleDeleteProject}
-              className="flex items-center rounded-lg px-3 py-1.5 text-sm text-red-600 transition hover:bg-red-50"
-            >
-              <Trash2 className="mr-1 h-4 w-4" />
-              Delete
-            </button>
-            )}
-          </div>
         </div>
       </div>
       )}

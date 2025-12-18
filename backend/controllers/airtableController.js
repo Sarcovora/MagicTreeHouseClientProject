@@ -31,7 +31,30 @@ const handleGetProjectDetails = asyncHandler(async (req, res, next) => {
     if (!recordId) {
         return res.status(400).json({ message: 'Record ID parameter is required.' });
     }
+
     try {
+        // --- Permission Check ---
+        if (req.user && !req.user.admin) {
+            // Landowner accessing project. Verify ownership.
+            if (!req.user.email) {
+                return res.status(401).json({ message: "Unauthorized." });
+            }
+            
+            // We need to fetch the project first to check ownership (or use findProjectByEmail first)
+            // Option 1: Fetch details then check info. 
+            // Option 2: Use findProjectByEmail and compare IDs. (Safer if findProjectByEmail is robust)
+            
+            const landownerProject = await airtableService.findProjectByEmail(req.user.email);
+            
+            if (!landownerProject || landownerProject.id !== recordId) {
+                 // Even if project exists, if it's not theirs, deny it.
+                 // We return 403.
+                 console.warn(`Unauthorized access attempt by ${req.user.email} for project ${recordId}`);
+                 return res.status(403).json({ message: "Access denied. You do not have permission to view this project." });
+            }
+        }
+        // --- End Permission Check ---
+
         const projectDetails = await airtableService.getProjectDetails(recordId);
         if (!projectDetails) {
             // This case might be handled by the service throwing an error now

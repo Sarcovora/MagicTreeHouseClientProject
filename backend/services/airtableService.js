@@ -319,10 +319,15 @@ const getProjectDetails = async (recordId) => {
 const findProjectByEmail = async (email) => {
     if (!email) throw new Error('Email is required to find project.');
     
-    console.log(`Searching for project with email: ${email}`);
-    // Normalized check: case-insensitive
+    const normalizedEmail = email.toLowerCase().trim();
+    console.log(`Searching for project with email: ${normalizedEmail}`);
+    
+    // Escape email for Airtable formula to prevent injection/formula breakage
     const emailField = FIELD_MAP.apiToAirtable.email || 'Email';
-    const filterFormula = `LOWER({${emailField}}) = "${email.toLowerCase()}"`;
+    const escapedEmail = escapeFormulaValue(normalizedEmail);
+    const filterFormula = `LOWER({${emailField}}) = "${escapedEmail}"`;
+
+    console.log(`Using filter formula: ${filterFormula}`);
 
     try {
         const records = await table.select({
@@ -331,11 +336,23 @@ const findProjectByEmail = async (email) => {
         }).firstPage();
 
         if (records.length === 0) {
+            console.log(`No project found for email: ${normalizedEmail}`);
             return null;
         }
-        return processRecord(records[0]);
+        
+        const foundRecord = processRecord(records[0]);
+        
+        // CRITICAL: Post-fetch verification to prevent data leaks
+        // Double-check that the returned record's email actually matches
+        const recordEmail = (foundRecord.email || '').toLowerCase().trim();
+        if (recordEmail !== normalizedEmail) {
+            console.error(`DATA LEAK PREVENTED: Requested email '${normalizedEmail}' but Airtable returned record with email '${recordEmail}'. Record ID: ${foundRecord.id}`);
+            return null;
+        }
+        
+        return foundRecord;
     } catch (error) {
-        console.error(`Error finding project by email ${email}:`, error);
+        console.error(`Error finding project by email ${normalizedEmail}:`, error);
         throw new Error(`Failed to find project by email.`);
     }
 };

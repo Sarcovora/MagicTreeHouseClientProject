@@ -150,14 +150,6 @@ const SeasonProjectList = () => {
                   Projects for Season {normalizedSeasonYear || seasonYear}
                 </h1>
             </div>
-             {/* --- CHANGE BUTTON TO LINK --- */}
-             <Link
-                  to={`/admin/add-project?season=${encodeURIComponent(normalizedSeasonYear || seasonYear || '')}`} // Link to add page with query param
-                  className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 whitespace-nowrap text-sm self-start sm:self-center"
-             >
-                 <Plus className="w-4 h-4 mr-2" /> Add Project to {normalizedSeasonYear || seasonYear}
-             </Link>
-             {/* --- END LINK CHANGE --- */}
          </div>
           {/* Search Bar */}
           <div className="mt-6">
