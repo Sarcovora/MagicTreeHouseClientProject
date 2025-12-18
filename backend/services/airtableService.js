@@ -683,7 +683,8 @@ const attachDocumentToProject = async (recordId, documentType, attachment) => {
         const shouldAppend =
             documentType === 'plantingPhotoUrls' ||
             documentType === 'beforePhotoUrls' ||
-            documentType === 'propertyImageUrls';
+            documentType === 'propertyImageUrls' ||
+            documentType === 'draftMap'; // Enable versioning for Draft Map PDFs
 
         let existingAttachments = [];
         if (shouldAppend) {

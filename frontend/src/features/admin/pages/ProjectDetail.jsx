@@ -7,6 +7,7 @@ import {
   Edit,
   Loader2,
   MapPin,
+  Pencil,
   Plus,
   Trash2,
   User,
@@ -15,6 +16,7 @@ import Carousel from "../../../components/common/Carousel";
 import InfoCard from "../../../components/common/InfoCard";
 import InfoField from "../../../components/common/InfoField";
 import DateSelectionModal from "../../../components/common/DateSelectionModal";
+import PdfEditor from "../components/PdfEditor";
 import apiService from "../../../services/apiService";
 
 const formatDate = (value) => {
@@ -84,10 +86,12 @@ const DocumentTile = ({
   files,
   onUpload,
   onDelete,
+  onEdit,
   isUploading,
   isDeleting,
 }) => {
   const fileInputRef = useRef(null);
+  const [selectedVersionIndex, setSelectedVersionIndex] = useState(null);
 
   const handleFileChange = async (event) => {
     const selectedFile = event.target.files?.[0];
@@ -101,7 +105,19 @@ const DocumentTile = ({
     fileInputRef.current?.click();
   };
 
+  const handleEdit = () => {
+    if (onEdit) {
+      // Use selected version, or default to newest (last in array)
+      const indexToEdit = selectedVersionIndex !== null ? selectedVersionIndex : files.length - 1;
+      onEdit(slot.key, files[indexToEdit]);
+    }
+  };
+
   const inputId = `upload-${slot.key}`;
+  // Check if it's a PDF - either contains .pdf in URL or is from airtable (Draft Maps are typically PDFs)
+  const fileUrl = files[0]?.toLowerCase() || '';
+  const isPdf = fileUrl.includes('.pdf') || (slot.key === 'draftMap' && fileUrl.includes('airtable'));
+  const canEdit = slot.key === 'draftMap' && files.length > 0;
 
   if (files.length === 0 || isUploading) {
     return (
@@ -146,7 +162,8 @@ const DocumentTile = ({
     );
   }
 
-  const primaryUrl = files[0];
+  // Use the last file (newest) for Draft Map, first file for others
+  const primaryUrl = slot.key === 'draftMap' ? files[files.length - 1] : files[0];
   const isBusy = isUploading || isDeleting;
   const disabledLinkClass = isBusy ? "pointer-events-none opacity-60" : "";
 
@@ -169,6 +186,25 @@ const DocumentTile = ({
           </p>
         )}
       </div>
+
+      {/* Version Selector for Draft Map with multiple files */}
+      {canEdit && files.length > 1 && (
+        <div className="mt-3">
+          <label className="text-xs font-medium text-gray-600">Edit version:</label>
+          <select
+            value={selectedVersionIndex !== null ? selectedVersionIndex : files.length - 1}
+            onChange={(e) => setSelectedVersionIndex(Number(e.target.value))}
+            className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-xs"
+          >
+            {files.map((_, index) => (
+              <option key={index} value={index}>
+                {index === files.length - 1 ? 'Newest' : index === 0 ? 'Original' : `Version ${index}`}
+              </option>
+            )).reverse()}
+          </select>
+        </div>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-2">
         <a
           href={primaryUrl}
@@ -178,6 +214,21 @@ const DocumentTile = ({
         >
           View
         </a>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={handleEdit}
+            className={`rounded-lg border border-blue-600/30 bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 ${
+              isBusy ? "opacity-70 cursor-not-allowed" : ""
+            }`}
+            disabled={isBusy}
+          >
+            <span className="flex items-center">
+              <Pencil className="mr-1 h-4 w-4" />
+              Edit
+            </span>
+          </button>
+        )}
         <button
           type="button"
           onClick={openPicker}
@@ -273,6 +324,7 @@ const ProjectDetail = () => {
   const [photoUploadState, setPhotoUploadState] = useState({ key: null, error: null });
   const [lightboxImage, setLightboxImage] = useState(null);
   const [pendingPhotoUpload, setPendingPhotoUpload] = useState(null); // { file, slotKey }
+  const [pdfEditorState, setPdfEditorState] = useState({ isOpen: false, pdfUrl: null, documentType: null });
 
   const loadProjectDetails = useCallback(async () => {
     if (!projectId) {
@@ -394,6 +446,42 @@ const ProjectDetail = () => {
         error: deleteErr?.message || "Failed to delete document.",
       });
     }
+  };
+
+  const handleDocumentEdit = (documentType, pdfUrl) => {
+    setPdfEditorState({ isOpen: true, pdfUrl, documentType });
+  };
+
+  const handlePdfEditorSave = async (blob) => {
+    if (!projectId || !pdfEditorState.documentType) return;
+
+    try {
+      // Get current file name from URL
+      const urlParts = pdfEditorState.pdfUrl.split('/');
+      const currentFileName = urlParts[urlParts.length - 1].split('?')[0];
+
+      // Extract base name and determine next version
+      const versionMatch = currentFileName.match(/_v(\d+)\.pdf$/i);
+      const baseFileName = currentFileName.replace(/_v\d+\.pdf$/i, '.pdf').replace(/\.pdf$/i, '');
+      const nextVersion = versionMatch ? parseInt(versionMatch[1]) + 1 : 1;
+      const newFileName = `${baseFileName}_v${nextVersion}.pdf`;
+
+      // Create File object from blob
+      const file = new File([blob], newFileName, { type: 'application/pdf' });
+
+      // Close editor and upload
+      setPdfEditorState({ isOpen: false, pdfUrl: null, documentType: null });
+
+      // Upload the new version
+      await handleDocumentUpload(pdfEditorState.documentType, file);
+    } catch (error) {
+      console.error('Failed to save annotated PDF:', error);
+      alert('Failed to save annotated PDF. Please try again.');
+    }
+  };
+
+  const handlePdfEditorCancel = () => {
+    setPdfEditorState({ isOpen: false, pdfUrl: null, documentType: null });
   };
 
   const initiatePhotoUpload = (slotKey, file) => {
@@ -953,6 +1041,7 @@ const ProjectDetail = () => {
                 files={slot.files}
                 onUpload={handleDocumentUpload}
                 onDelete={handleDocumentDelete}
+                onEdit={handleDocumentEdit}
                 isUploading={docUploadState.key === slot.key}
                 isDeleting={docDeleteState.key === slot.key}
               />
@@ -1064,6 +1153,15 @@ const ProjectDetail = () => {
             />
           </div>
         </div>
+      )}
+
+      {/* PDF Editor Modal */}
+      {pdfEditorState.isOpen && pdfEditorState.pdfUrl && (
+        <PdfEditor
+          pdfUrl={pdfEditorState.pdfUrl}
+          onSave={handlePdfEditorSave}
+          onCancel={handlePdfEditorCancel}
+        />
       )}
     </div>
   );
