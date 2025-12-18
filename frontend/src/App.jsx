@@ -33,15 +33,6 @@ function App() {
         <Route path="/" element={<Navigate to={defaultRedirect} replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route
-          path="/account"
-          element={
-            <ProtectedRoute>
-              <AccountPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
           path="/admin"
           element={
             <ProtectedRoute requiresAdmin>
@@ -58,6 +49,7 @@ function App() {
           <Route path="gallery" element={<PhotoGallery />} />
           <Route path="forms" element={<Forms />} />
           <Route path="forms/:id" element={<FormDetail />} />
+          <Route path="account" element={<AccountPage />} />
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Route>
@@ -75,6 +67,7 @@ function App() {
            <Route path="map" element={<Map />} />
            <Route path="gallery" element={<PhotoGallery />} />
            <Route path="forms" element={<Forms />} />
+           <Route path="account" element={<AccountPage />} />
            <Route index element={<Navigate to="dashboard" replace />} />
            <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Route>

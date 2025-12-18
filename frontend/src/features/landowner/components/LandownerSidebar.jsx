@@ -92,7 +92,7 @@ const LandownerSidebar = () => {
         {menuOpen && (
           <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
             <Link
-              to="/account"
+              to="/landowner/account"
               onClick={() => setMenuOpen(false)}
               className="flex w-full items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >

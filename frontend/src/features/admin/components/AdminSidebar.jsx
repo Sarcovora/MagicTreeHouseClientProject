@@ -8,6 +8,7 @@ import {
   Settings,
   ChevronDown,
   Image,
+  Bell,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import TreeFolks from "../../../assets/icons/treefolks.svg?react";
@@ -103,7 +104,7 @@ const AdminSidebar = () => {
         {userMenuOpen && (
           <div className="absolute bottom-full left-0 right-0 mb-2 w-[calc(100%-2rem)] mx-4 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10 animate-fade-in-fast">
             <Link
-              to="/account"
+              to={isAdmin ? "/admin/account" : "/landowner/account"}
               onClick={() => setUserMenuOpen(false)}
               className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors w-full"
             >

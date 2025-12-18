@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { useAuth } from "../AuthProvider";
+import { useNavigate } from "react-router-dom";
 
 const AccountPage = () => {
   const { user, profile, isAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = useState(profile?.username ?? "");
   const [statusMessage, setStatusMessage] = useState("");
   const [statusType, setStatusType] = useState("info");
@@ -45,6 +47,15 @@ const AccountPage = () => {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
+      <button
+        type="button"
+        onClick={() =>
+          navigate(isAdmin ? "/admin/dashboard" : "/landowner/dashboard")
+        }
+        className="mb-6 inline-flex items-center text-sm font-medium text-green-700 hover:text-green-900"
+      >
+        ← Back to dashboard
+      </button>
       <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-wide text-green-600">
           Account
