@@ -87,6 +87,8 @@ const FIELD_MAP = {
         initialMap: 'Initial Map',
         draftMap: 'Draft Map',
         finalMap: 'Final Map',
+        replantingMap: 'Replanting Map',
+        otherAttachments: 'Other Attachments',
         activeCarbonShapefiles: 'Active Carbon Shapefiles',
         plantingPhotos: 'Planting Photos',
         propertyImages: 'Landowner Photo Submissions',
@@ -120,6 +122,8 @@ const FIELD_MAP = {
         'Initial Map': 'initialMapUrl',
         'Draft Map': 'draftMapUrl',
         'Final Map': 'finalMapUrl',
+        'Replanting Map': 'replantingMapUrl',
+        'Other Attachments': 'otherAttachments',
         'Active Carbon Shapefiles': 'activeCarbonShapefiles',
         'Planting Photos': 'plantingPhotoUrls',
         'Before Photos': 'beforePhotoUrls',
@@ -141,6 +145,8 @@ const DOCUMENT_FIELD_MAP = {
     carbonDocs: FIELD_MAP.apiToAirtable.carbonDocs || 'Carbon docs (notarized)',
     draftMap: FIELD_MAP.apiToAirtable.draftMap || 'Draft Map',
     finalMap: FIELD_MAP.apiToAirtable.finalMap || 'Final Map',
+    replantingMap: FIELD_MAP.apiToAirtable.replantingMap || 'Replanting Map',
+    otherAttachments: FIELD_MAP.apiToAirtable.otherAttachments || 'Other Attachments',
     postPlantingReports: FIELD_MAP.apiToAirtable.postPlantingReports || 'Post-Planting Reports',
     plantingPhotoUrls: FIELD_MAP.apiToAirtable.plantingPhotoUrls || 'Planting Photos',
     beforePhotoUrls: FIELD_MAP.apiToAirtable.beforePhotoUrls || 'Before Photos',
@@ -515,9 +521,14 @@ const deleteSeasonOption = async (seasonName) => {
 
     let existingRecords = [];
     try {
+        const ownerNameField = FIELD_MAP.apiToAirtable.ownerLastName || 'Owner Last Name or Site Name';
+        const seasonFormula = buildSeasonFilterFormula(trimmedSeason);
+        // Exclude dummy records from the count
+        const filterFormula = `AND(${seasonFormula}, {${ownerNameField}} != '--- SEASON DUMMY RECORD ---')`;
+        
         existingRecords = await table.select({
             maxRecords: 1,
-            filterByFormula: buildSeasonFilterFormula(trimmedSeason),
+            filterByFormula: filterFormula,
             fields: ['UniqueID'],
         }).firstPage();
     } catch (error) {
@@ -766,6 +777,30 @@ const attachDocumentToProject = async (recordId, documentType, attachment) => {
     }
 };
 
+const detachDocumentFromProject = async (recordId, documentType) => {
+    const fieldName = await resolveAttachmentFieldName(documentType);
+    try {
+        const updatePayload = [{
+            id: recordId,
+            fields: {
+                [fieldName]: [],
+            },
+        }];
+
+        const updatedRecords = await table.update(updatePayload, { typecast: true });
+        if (!updatedRecords || updatedRecords.length === 0) {
+            throw new Error('Record update failed, no record returned.');
+        }
+        return processRecord(updatedRecords[0]);
+    } catch (error) {
+        console.error(`Error removing document (${documentType}) from record ${recordId}:`, error);
+        if (error.statusCode) {
+            throw error;
+        }
+        throw createServiceError(error.message || 'Failed to remove document from project.');
+    }
+};
+
 
 // --- Exports ---
 module.exports = {
@@ -777,4 +812,5 @@ module.exports = {
     updateProject,
     deleteSeasonOption,
     attachDocumentToProject,
+    detachDocumentFromProject,
 };

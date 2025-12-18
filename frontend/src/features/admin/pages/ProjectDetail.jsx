@@ -14,6 +14,7 @@ import {
 import Carousel from "../../../components/common/Carousel";
 import InfoCard from "../../../components/common/InfoCard";
 import InfoField from "../../../components/common/InfoField";
+import DateSelectionModal from "../../../components/common/DateSelectionModal";
 import apiService from "../../../services/apiService";
 
 const formatDate = (value) => {
@@ -38,17 +39,6 @@ const ensureText = (value, fallback = "Not provided") =>
 const ensureArray = (value) =>
   Array.isArray(value) ? value.filter(Boolean) : value ? [value] : [];
 
-const getFileNameFromUrl = (url = "") => {
-  try {
-    const parsed = new URL(url);
-    const segments = parsed.pathname.split("/").filter(Boolean);
-    return segments.pop() || parsed.hostname || "Document";
-  } catch (err) {
-    const sanitized = url.split("?")[0];
-    const segments = sanitized.split("/").filter(Boolean);
-    return segments.pop() || "Document";
-  }
-};
 
 const DOCUMENT_SLOTS = [
   {
@@ -70,6 +60,18 @@ const DOCUMENT_SLOTS = [
     fallbackField: "finalMapUrl",
   },
   {
+    key: "replantingMap",
+    label: "Replanting Map",
+    description: "Map for replanting scope and revisions.",
+    fallbackField: "replantingMapUrl",
+  },
+  {
+    key: "otherAttachments",
+    label: "Other Attachments",
+    description: "Supplemental project documents.",
+    fallbackField: "otherAttachments",
+  },
+  {
     key: "postPlantingReports",
     label: "Post-Planting Reports",
     description: "Reports documenting post-planting observations.",
@@ -77,7 +79,14 @@ const DOCUMENT_SLOTS = [
   },
 ];
 
-const DocumentTile = ({ slot, files, onUpload, isUploading }) => {
+const DocumentTile = ({
+  slot,
+  files,
+  onUpload,
+  onDelete,
+  isUploading,
+  isDeleting,
+}) => {
   const fileInputRef = useRef(null);
 
   const handleFileChange = async (event) => {
@@ -96,7 +105,7 @@ const DocumentTile = ({ slot, files, onUpload, isUploading }) => {
 
   if (files.length === 0 || isUploading) {
     return (
-      <div className="flex h-full flex-col justify-between rounded-2xl border-2 border-dashed border-green-400 bg-green-50/50 p-4 text-center">
+      <div className="flex h-full flex-col justify-between rounded-2xl border-2 border-dashed border-green-500/40 bg-green-50/50 p-4 text-center">
         <div>
           <p className="text-sm font-semibold text-gray-800">{slot.label}</p>
           <p className="mt-2 text-xs text-gray-500">{slot.description}</p>
@@ -105,8 +114,10 @@ const DocumentTile = ({ slot, files, onUpload, isUploading }) => {
           <button
             type="button"
             onClick={openPicker}
-            className={`flex items-center justify-center rounded-full border border-green-500 px-4 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50 ${
-              isUploading ? "opacity-70" : ""
+            className={`inline-flex items-center justify-center rounded-full border border-green-600/30 bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-green-500/20 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 ${
+              isUploading
+                ? "cursor-not-allowed opacity-70"
+                : "hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-md active:translate-y-0"
             }`}
             disabled={isUploading}
           >
@@ -136,7 +147,8 @@ const DocumentTile = ({ slot, files, onUpload, isUploading }) => {
   }
 
   const primaryUrl = files[0];
-  const fileName = getFileNameFromUrl(primaryUrl);
+  const isBusy = isUploading || isDeleting;
+  const disabledLinkClass = isBusy ? "pointer-events-none opacity-60" : "";
 
   return (
     <div className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -144,8 +156,12 @@ const DocumentTile = ({ slot, files, onUpload, isUploading }) => {
         {slot.label}
       </p>
       <div className="mt-3 flex-1">
-        <p className="text-base font-semibold text-gray-900 break-all">{fileName}</p>
-        <p className="mt-1 text-xs text-gray-500 line-clamp-3">{slot.description}</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+          File attached
+        </p>
+        <p className="mt-2 text-xs text-gray-500 line-clamp-3">
+          {slot.description}
+        </p>
         {files.length > 1 && (
           <p className="mt-2 text-xs text-gray-400">
             +{files.length - 1} additional file
@@ -153,12 +169,12 @@ const DocumentTile = ({ slot, files, onUpload, isUploading }) => {
           </p>
         )}
       </div>
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <a
           href={primaryUrl}
           target="_blank"
           rel="noreferrer"
-          className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-center text-sm font-medium text-green-700 transition hover:bg-green-50"
+          className={`flex-1 rounded-lg border border-green-600/30 bg-green-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm shadow-green-500/20 transition hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 ${disabledLinkClass}`}
         >
           View
         </a>
@@ -166,18 +182,33 @@ const DocumentTile = ({ slot, files, onUpload, isUploading }) => {
           type="button"
           onClick={openPicker}
           className={`rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 ${
-            isUploading ? "opacity-70" : ""
+            isBusy ? "opacity-70" : ""
           }`}
-          disabled={isUploading}
+          disabled={isBusy}
         >
           {isUploading ? (
             <span className="flex items-center">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Uploading to Airtable...
             </span>
+          ) : isDeleting ? (
+            <span className="flex items-center">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Deleting...
+            </span>
           ) : (
             "Replace"
           )}
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete?.(slot)}
+          className={`rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 ${
+            isBusy ? "opacity-70" : ""
+          }`}
+          disabled={isBusy}
+        >
+          Delete
         </button>
         <input
           id={inputId}
@@ -185,7 +216,7 @@ const DocumentTile = ({ slot, files, onUpload, isUploading }) => {
           ref={fileInputRef}
           className="sr-only"
           onChange={handleFileChange}
-          disabled={isUploading}
+          disabled={isBusy}
         />
       </div>
     </div>
@@ -208,8 +239,10 @@ const PhotoUploadButton = ({ label, slotKey, onUpload, isUploading }) => {
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        className={`rounded-full border border-green-500 px-4 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50 ${
-          isUploading ? "opacity-70" : ""
+        className={`inline-flex items-center justify-center rounded-full border border-green-600/30 bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-green-500/20 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 ${
+          isUploading
+            ? "cursor-not-allowed opacity-70"
+            : "hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-md active:translate-y-0"
         }`}
         disabled={isUploading}
       >
@@ -227,6 +260,8 @@ const PhotoUploadButton = ({ label, slotKey, onUpload, isUploading }) => {
   );
 };
 
+
+
 const ProjectDetail = () => {
   const navigate = useNavigate();
   const { id: projectId } = useParams();
@@ -234,8 +269,10 @@ const ProjectDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [docUploadState, setDocUploadState] = useState({ key: null, error: null });
+  const [docDeleteState, setDocDeleteState] = useState({ key: null, error: null });
   const [photoUploadState, setPhotoUploadState] = useState({ key: null, error: null });
   const [lightboxImage, setLightboxImage] = useState(null);
+  const [pendingPhotoUpload, setPendingPhotoUpload] = useState(null); // { file, slotKey }
 
   const loadProjectDetails = useCallback(async () => {
     if (!projectId) {
@@ -303,6 +340,10 @@ const ProjectDetail = () => {
   );
   const landownerPhotos = ensureArray(project?.propertyImageUrls);
   const activeCarbonShapefiles = ensureArray(project?.activeCarbonShapefiles);
+  const shapefileSummary =
+    activeCarbonShapefiles.length > 0
+      ? `${activeCarbonShapefiles.length} file${activeCarbonShapefiles.length === 1 ? "" : "s"} available`
+      : "No shape files uploaded yet";
   const carouselPhotos =
     combinedPhotos.length > 0
       ? combinedPhotos
@@ -331,13 +372,62 @@ const ProjectDetail = () => {
     setDocUploadState({ key: null, error: null });
   };
 
-  const handlePhotoUpload = async (slotKey, file) => {
-    if (!projectId || !file) {
+  const handleDocumentDelete = async (slot) => {
+    if (!projectId || !slot?.key) {
       return;
     }
+    const confirmed = window.confirm(
+      `Delete "${slot.label}"? This cannot be undone.`
+    );
+    if (!confirmed) {
+      return;
+    }
+    setDocDeleteState({ key: slot.key, error: null });
+    try {
+      await apiService.deleteProjectDocument(projectId, slot.key);
+      await loadProjectDetails();
+      setDocDeleteState({ key: null, error: null });
+    } catch (deleteErr) {
+      console.error("Failed to delete document:", deleteErr);
+      setDocDeleteState({
+        key: null,
+        error: deleteErr?.message || "Failed to delete document.",
+      });
+    }
+  };
+
+  const initiatePhotoUpload = (slotKey, file) => {
+    if (!projectId || !file) return;
+    setPendingPhotoUpload({ slotKey, file });
+  };
+
+  const handleDateConfirm = async (dateString) => {
+    if (!pendingPhotoUpload) return;
+    const { file, slotKey } = pendingPhotoUpload;
+
+    // Format: name_M_D_YYYY.ext
+    // dateString is YYYY-MM-DD
+    const [year, month, day] = dateString.split("-");
+    const safeMonth = parseInt(month, 10);
+    const safeDay = parseInt(day, 10);
+
+    const originalName = file.name;
+    const lastDotIndex = originalName.lastIndexOf(".");
+    const namePart = lastDotIndex !== -1 ? originalName.slice(0, lastDotIndex) : originalName;
+    const extPart = lastDotIndex !== -1 ? originalName.slice(lastDotIndex) : "";
+    
+    // Construct new name
+    const newName = `${namePart}_${safeMonth}_${safeDay}_${year}${extPart}`;
+    
+    // Create new File object
+    const newFile = new File([file], newName, { type: file.type });
+
+    setPendingPhotoUpload(null); // Close modal
+    
+    // Proceed with upload
     setPhotoUploadState({ key: slotKey, error: null });
     try {
-      await apiService.uploadProjectDocument(projectId, slotKey, file);
+      await apiService.uploadProjectDocument(projectId, slotKey, newFile);
       await loadProjectDetails();
       setPhotoUploadState({ key: null, error: null });
     } catch (uploadErr) {
@@ -347,6 +437,10 @@ const ProjectDetail = () => {
         error: uploadErr?.message || "Failed to upload photo.",
       });
     }
+  };
+
+  const handleDateCancel = () => {
+    setPendingPhotoUpload(null);
   };
 
   const handleDownloadShapeFiles = () => {
@@ -577,7 +671,7 @@ const ProjectDetail = () => {
   ];
 
   return (
-    <div className="min-h-full bg-gray-50">
+    <div className="bg-gray-50">
       <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <button
@@ -639,13 +733,13 @@ const ProjectDetail = () => {
                 <PhotoUploadButton
                   label="Upload Planting Photo"
                   slotKey="plantingPhotoUrls"
-                  onUpload={handlePhotoUpload}
+                  onUpload={initiatePhotoUpload}
                   isUploading={photoUploadState.key === "plantingPhotoUrls"}
                 />
                 <PhotoUploadButton
                   label="Upload Before Photo"
                   slotKey="beforePhotoUrls"
-                  onUpload={handlePhotoUpload}
+                  onUpload={initiatePhotoUpload}
                   isUploading={photoUploadState.key === "beforePhotoUrls"}
                 />
               </div>
@@ -673,7 +767,7 @@ const ProjectDetail = () => {
                 <PhotoUploadButton
                   label="Upload Landowner Submission"
                   slotKey="propertyImageUrls"
-                  onUpload={handlePhotoUpload}
+                  onUpload={initiatePhotoUpload}
                   isUploading={photoUploadState.key === "propertyImageUrls"}
                 />
               </div>
@@ -705,45 +799,6 @@ const ProjectDetail = () => {
                 <span className="ml-7">{project.location}</span>
               </div>
             )}
-          </div>
-
-          <div className="rounded-xl border border-green-100 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-gray-800">Active Carbon Shapefiles</p>
-                <p className="text-xs text-gray-500">
-                  {activeCarbonShapefiles.length > 0
-                    ? `${activeCarbonShapefiles.length} file${activeCarbonShapefiles.length === 1 ? "" : "s"} available`
-                    : "No shape files uploaded yet"}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleDownloadShapeFiles}
-                  disabled={!activeCarbonShapefiles.length}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                    activeCarbonShapefiles.length
-                      ? "border-green-600 text-green-700 hover:bg-green-50"
-                      : "border-gray-200 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  Download All
-                </button>
-                {activeCarbonShapefiles.map((url, idx) => (
-                  <a
-                    key={`${url}-${idx}`}
-                    href={url}
-                    target="_blank"
-                    rel="noreferrer"
-                    download
-                    className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
-                  >
-                    File {idx + 1}
-                  </a>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -817,6 +872,39 @@ const ProjectDetail = () => {
                 />
               ))}
             </InfoCard>
+
+            <InfoCard
+              title="Active Carbon Shapefiles"
+              bodyClassName="space-y-4"
+            >
+              <InfoField label="Availability" value={shapefileSummary} />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadShapeFiles}
+                  disabled={!activeCarbonShapefiles.length}
+                  className={`inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 ${
+                    activeCarbonShapefiles.length
+                      ? "border-green-600/30 bg-green-600 text-white shadow-sm shadow-green-500/20 hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-md active:translate-y-0"
+                      : "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 shadow-none"
+                  }`}
+                >
+                  Download All
+                </button>
+                {activeCarbonShapefiles.map((url, idx) => (
+                  <a
+                    key={`${url}-${idx}`}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    download
+                    className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
+                  >
+                    File {idx + 1}
+                  </a>
+                ))}
+              </div>
+            </InfoCard>
           </div>
         </div>
         <div className="rounded-2xl bg-white p-6 shadow-sm">
@@ -852,9 +940,9 @@ const ProjectDetail = () => {
           <p className="mt-1 text-sm text-gray-500">
             Keep carbon paperwork and mapping artifacts together with each project.
           </p>
-          {docUploadState.error && (
+          {(docUploadState.error || docDeleteState.error) && (
             <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-              {docUploadState.error}
+              {docUploadState.error || docDeleteState.error}
             </div>
           )}
           <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -864,7 +952,9 @@ const ProjectDetail = () => {
                 slot={slot}
                 files={slot.files}
                 onUpload={handleDocumentUpload}
+                onDelete={handleDocumentDelete}
                 isUploading={docUploadState.key === slot.key}
+                isDeleting={docDeleteState.key === slot.key}
               />
             ))}
           </div>
@@ -943,6 +1033,13 @@ const ProjectDetail = () => {
           </div>
         </div>
       </div>
+
+      <DateSelectionModal
+        isOpen={!!pendingPhotoUpload}
+        onClose={handleDateCancel}
+        onConfirm={handleDateConfirm}
+        displayName="this photo"
+      />
 
       {lightboxImage && (
         <div

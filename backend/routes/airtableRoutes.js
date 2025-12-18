@@ -39,5 +39,7 @@ router.patch('/projects/:recordId', requireAdmin, airtableController.handleUpdat
 
 // Upload/replace a project document (attachments)
 router.post('/projects/:recordId/documents', requireAdmin, airtableController.handleUploadProjectDocument);
+// Delete a project document (attachments)
+router.delete('/projects/:recordId/documents/:documentType', airtableController.handleDeleteProjectDocument);
 
 module.exports = router;

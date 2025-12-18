@@ -206,6 +206,29 @@ const handleUploadProjectDocument = asyncHandler(async (req, res) => {
     }
 });
 
+const handleDeleteProjectDocument = asyncHandler(async (req, res) => {
+    const { recordId, documentType } = req.params;
+
+    if (!recordId) {
+        return res.status(400).json({ message: 'Record ID parameter is required.' });
+    }
+    if (!documentType) {
+        return res.status(400).json({ message: 'documentType is required.' });
+    }
+
+    try {
+        const updatedProject = await airtableService.detachDocumentFromProject(recordId, documentType);
+        res.json({
+            success: true,
+            documentType,
+            project: updatedProject,
+        });
+    } catch (error) {
+        console.error(`Controller error deleting document for ${recordId}:`, error);
+        res.status(500).json({ message: error.message || 'Failed to delete project document.' });
+    }
+});
+
 module.exports = {
     handleGetAllSeasons,
     handleGetProjectsBySeason,
@@ -215,4 +238,5 @@ module.exports = {
     handleUpdateProject,
     handleDeleteSeason,
     handleUploadProjectDocument,
+    handleDeleteProjectDocument,
 };

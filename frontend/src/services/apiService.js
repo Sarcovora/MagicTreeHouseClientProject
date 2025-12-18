@@ -227,6 +227,8 @@ const normalizeProjectRecord = (record = {}, { seasonYear } = {}) => {
     carbonDocs: toArray(record.carbonDocs),
     draftMap: toArray(record.draftMapUrl),
     finalMap: toArray(record.finalMapUrl),
+    replantingMap: toArray(record.replantingMapUrl),
+    otherAttachments: toArray(record.otherAttachments),
     postPlantingReports: toArray(record.postPlantingReports),
   };
 
@@ -548,6 +550,33 @@ export const uploadProjectDocument = async (projectId, documentType, file) => {
   }
 };
 
+export const deleteProjectDocument = async (projectId, documentType) => {
+  if (!projectId) {
+    throw new Error('Project ID is required to delete a document.');
+  }
+  if (!documentType) {
+    throw new Error('Document type is required.');
+  }
+
+  try {
+    const response = await apiClient.delete(
+      `/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(documentType)}`
+    );
+    resetSeasonProjectsCache();
+    return response?.data ?? null;
+  } catch (error) {
+    console.error(
+      `API Call: deleteProjectDocument(${projectId}, ${documentType}) -> Failed.`,
+      error
+    );
+    throw new Error(
+      error?.response?.data?.message ||
+        error?.message ||
+        'Failed to delete project document.'
+    );
+  }
+};
+
 
 
 export const deleteSeason = async (seasonId) => {
@@ -627,6 +656,7 @@ const apiService = {
     updateProject,
     deleteProject,
     uploadProjectDocument,
+    deleteProjectDocument,
     deleteSeason, // Add deleteSeason here
   getFormDetails,
     getUserProfile,
