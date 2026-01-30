@@ -3,9 +3,17 @@ import axios from 'axios';
 import { auth } from '../firebase';
 
 // --- Configuration ---
-const DEFAULT_API_BASE = 'http://localhost:3000';
+const DEFAULT_API_BASE = import.meta.env.MODE === 'production'
+  ? 'https://treehouse-backend.vercel.app'
+  : 'http://localhost:3000';
 const apiBaseFromEnv = (import.meta?.env?.VITE_API_BASE_URL || DEFAULT_API_BASE).replace(/\/$/, '');
 const apiPrefix = import.meta?.env?.VITE_API_PREFIX ?? '/api';
+
+console.log('API Configuration:', {
+  envValue: import.meta?.env?.VITE_API_BASE_URL,
+  finalBase: apiBaseFromEnv,
+  fullURL: `${apiBaseFromEnv}${apiPrefix}`
+});
 
 export const apiClient = axios.create({
   baseURL: `${apiBaseFromEnv}${apiPrefix}`,
