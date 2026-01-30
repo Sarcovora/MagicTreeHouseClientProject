@@ -78,7 +78,7 @@ const FIELD_DEFINITIONS = [
     { api: 'siteNumber', airtable: 'Site Number' },
     
     // Dates
-    { api: 'contactDate', airtable: 'Contact Date' },
+    { api: 'Initial Contact Date', airtable: 'Initial Contact Date' },
     { api: 'consultationDate', airtable: 'Consultation Date' },
     { api: 'flaggingDate', airtable: 'Flagging Date' },
     { api: 'plantingDate', airtable: 'Planting Date' },

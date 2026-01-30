@@ -55,7 +55,6 @@ app.use((err, req, res, next) => {
 });
 
 // --- Start Server ---
-// --- Start Server ---
 const server = app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
     if (!process.env.AIRTABLE_PAT || !process.env.AIRTABLE_BASE_ID || !process.env.AIRTABLE_TABLE_ID) {
@@ -64,7 +63,7 @@ const server = app.listen(PORT, () => {
 });
 
 server.on('close', () => {
-    // console.log('Server Connection Closed');
+    console.log('Server Connection Closed');
 });
 
 process.on('SIGTERM', () => {
@@ -72,6 +71,3 @@ process.on('SIGTERM', () => {
     process.exit(0);
 });
 
-// KEEP-ALIVE: Prevent event loop from draining immediately
-// Ensures the server stays running even if no active handles are detected temporarily
-setInterval(() => {}, 60000);

@@ -490,6 +490,8 @@ This way, files end up on Airtable's servers (free hosting), and Cloudinary is j
 
 **Step 2: Get Your Credentials**
 1. Log into [Cloudinary Console](https://console.cloudinary.com)
+![alt text](<Screenshot 2026-01-30 at 12.55.34 PM.png>)
+
 2. On the Dashboard, you'll see three key values:
    - **Cloud Name** (e.g., `dxyz123abc`)
    - **API Key** (e.g., `123456789012345`)
