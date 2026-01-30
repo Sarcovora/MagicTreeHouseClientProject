@@ -1,47 +1,127 @@
+/**
+ * PdfEditor Component
+ * 
+ * A full-screen annotation editor for PDFs and images. Allows users to
+ * draw on documents with customizable pen color and size, then save
+ * the annotated version.
+ * 
+ * Features:
+ * - PDF multi-page navigation with per-page annotation persistence
+ * - Image editing with high-resolution output
+ * - Drawing tools: pen with adjustable size/color
+ * - Undo and clear functionality
+ * - Integrated comment field for detailed feedback
+ * 
+ * Dependencies:
+ * - react-pdf: PDF rendering
+ * - fabric.js: Canvas drawing
+ * - pdf-lib: PDF modification
+ */
+
 import { useEffect, useRef, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import * as fabric from 'fabric';
-import { PDFDocument } from 'pdf-lib';
 import PropTypes from 'prop-types';
-import { Pencil, Download, Undo, Trash2 } from 'lucide-react';
+import { Pencil, Download, Undo, Trash2, MessageSquare } from 'lucide-react';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
-// Configure PDF.js worker
+import { saveAnnotatedImage, saveAnnotatedPdf } from '../utils/pdfEditorHelpers';
+
+// ==================== Configuration ====================
+
+// Configure PDF.js worker (required for react-pdf)
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
+// Default dimensions before document loads
+const DEFAULT_DIMENSIONS = { width: 800, height: 600 };
+
+// Maximum display size to fit on screen
+const MAX_DISPLAY_WIDTH = 1000;
+const MAX_DISPLAY_HEIGHT = 800;
+
+// ==================== Helper Functions ====================
+
+/**
+ * Calculates scaled dimensions to fit within max bounds while preserving aspect ratio.
+ * 
+ * @param {number} naturalWidth - Original width
+ * @param {number} naturalHeight - Original height
+ * @returns {object} - { width, height, scale } for display
+ */
+function calculateDisplayDimensions(naturalWidth, naturalHeight) {
+  let scale = 1;
+  
+  if (naturalWidth > MAX_DISPLAY_WIDTH || naturalHeight > MAX_DISPLAY_HEIGHT) {
+    const scaleX = MAX_DISPLAY_WIDTH / naturalWidth;
+    const scaleY = MAX_DISPLAY_HEIGHT / naturalHeight;
+    scale = Math.min(scaleX, scaleY);
+  }
+
+  return {
+    width: naturalWidth * scale,
+    height: naturalHeight * scale,
+    scale,
+  };
+}
+
+// ==================== Component ====================
+
+/**
+ * @param {object} props
+ * @param {string} props.pdfUrl - URL of the PDF or image to edit
+ * @param {boolean} [props.isPdf] - Force PDF mode (auto-detected from URL if not provided)
+ * @param {function} props.onSave - Callback with annotated blob and optional comment
+ * @param {function} props.onCancel - Callback to close editor
+ * @param {boolean} props.requireComment - Whether to show and require a comment field
+ */
+const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel, requireComment = false }) => {
+  // ==================== State ====================
+  
+  // Document state
   const [numPages, setNumPages] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pdfDimensions, setPdfDimensions] = useState(DEFAULT_DIMENSIONS);
+  const [originalDimensions, setOriginalDimensions] = useState(null);
+  
+  // Canvas/drawing state
   const [canvas, setCanvas] = useState(null);
   const [penSize, setPenSize] = useState(3);
   const [penColor, setPenColor] = useState('#FF0000');
-  const [pdfDimensions, setPdfDimensions] = useState({ width: 800, height: 600 });
-  const [originalDimensions, setOriginalDimensions] = useState(null); // Store original image size for high-res save
+  const [pageAnnotations, setPageAnnotations] = useState({});
+  
+  // UI state
   const [isLoading, setIsLoading] = useState(false);
+  const [comment, setComment] = useState("");
 
-  const [pageAnnotations, setPageAnnotations] = useState({}); // Store annotations per page
-
+  // ==================== Refs ====================
+  
   const canvasRef = useRef(null);
   const pageRef = useRef(null);
   const fabricCanvasRef = useRef(null);
 
-  // Determine mode
-  // If propIsPdf is provided (boolean), use it. Otherwise fall back to URL check.
+  // ==================== Computed Values ====================
+  
+  // Determine if this is a PDF or image
   const cleanUrl = pdfUrl?.split('?')[0]?.toLowerCase();
   const urlIsPdf = cleanUrl?.endsWith('.pdf');
-  
   const isPdf = propIsPdf !== undefined ? propIsPdf : urlIsPdf;
   const isImage = !isPdf;
 
-  console.log('PdfEditor Debug:', { pdfUrl, cleanUrl, isPdf, isImage, propIsPdf });
+  const canSave = !requireComment || comment.trim().length > 0;
 
-  // Initialize canvas once on mount
+  console.log('PdfEditor Debug:', { pdfUrl: cleanUrl, isPdf, isImage });
+
+  // ==================== Canvas Initialization ====================
+  
+  /**
+   * Initialize Fabric.js canvas on mount.
+   * Only runs once to prevent duplicate canvas creation.
+   */
   useEffect(() => {
-    // Ensure we only initialize once
     if (!canvasRef.current) return;
 
-    // Check if canvas is already initialized
+    // Prevent re-initialization
     const existingCanvas = canvasRef.current.__fabricCanvas;
     if (existingCanvas) {
       fabricCanvasRef.current = existingCanvas;
@@ -53,21 +133,19 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
       const fabricCanvas = new fabric.Canvas(canvasRef.current, {
         width: pdfDimensions.width,
         height: pdfDimensions.height,
-        backgroundColor: 'rgba(0,0,0,0)' // Transparent
+        backgroundColor: 'rgba(0,0,0,0)', // Transparent overlay
       });
 
-      // Enable drawing mode and set up brush for Fabric v6
+      // Enable drawing mode with pencil brush
       fabricCanvas.isDrawingMode = true;
-
-      // Create a new PencilBrush for Fabric v6
       const brush = new fabric.PencilBrush(fabricCanvas);
-      brush.color = penColor; // Use current state
-      brush.width = penSize; // Use current state
+      brush.color = penColor;
+      brush.width = penSize;
       fabricCanvas.freeDrawingBrush = brush;
 
       console.log('Canvas initialized - Drawing mode:', fabricCanvas.isDrawingMode);
 
-      // Store reference on the DOM element to prevent re-initialization
+      // Store reference to prevent re-initialization
       canvasRef.current.__fabricCanvas = fabricCanvas;
       fabricCanvasRef.current = fabricCanvas;
       setCanvas(fabricCanvas);
@@ -75,6 +153,7 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
       console.error('Error initializing canvas:', error);
     }
 
+    // Cleanup on unmount
     return () => {
       if (fabricCanvasRef.current) {
         fabricCanvasRef.current.dispose();
@@ -84,30 +163,37 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
         fabricCanvasRef.current = null;
       }
     };
-  }, []); // Empty dependencies - only run once on mount
+  }, []); // Run once on mount
 
-  // Restore annotations when page changes
+  // ==================== Canvas Effects ====================
+  
+  /**
+   * Restore annotations when changing pages.
+   * Clears canvas and loads saved annotations for the new page.
+   */
   useEffect(() => {
-    if (canvas) {
-        canvas.clear();
+    if (!canvas) return;
+    
+    canvas.clear();
+    
+    const savedJSON = pageAnnotations[currentPage];
+    if (savedJSON) {
+      canvas.loadFromJSON(savedJSON, () => {
+        canvas.renderAll();
         
-        const savedJSON = pageAnnotations[currentPage];
-        if (savedJSON) {
-            canvas.loadFromJSON(savedJSON, () => {
-                canvas.renderAll();
-                 // Re-apply brush settings after load
-                if (!canvas.freeDrawingBrush) {
-                     const brush = new fabric.PencilBrush(canvas);
-                     canvas.freeDrawingBrush = brush;
-                }
-                canvas.freeDrawingBrush.color = penColor;
-                canvas.freeDrawingBrush.width = penSize;
-            });
+        // Re-apply brush settings after load
+        if (!canvas.freeDrawingBrush) {
+          canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
         }
+        canvas.freeDrawingBrush.color = penColor;
+        canvas.freeDrawingBrush.width = penSize;
+      });
     }
-  }, [currentPage, canvas]); // Run when page changes
+  }, [currentPage, canvas]);
 
-  // Update canvas dimensions when dimensions change
+  /**
+   * Update canvas dimensions when document dimensions change.
+   */
   useEffect(() => {
     if (canvas && pdfDimensions.width > 0 && pdfDimensions.height > 0) {
       canvas.setWidth(pdfDimensions.width);
@@ -117,23 +203,31 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
     }
   }, [canvas, pdfDimensions.width, pdfDimensions.height]);
 
-  // Update brush settings when pen color or size changes
+  /**
+   * Update brush settings when pen color/size changes.
+   */
   useEffect(() => {
-    if (canvas) {
-      if (!canvas.freeDrawingBrush) {
-        // Create brush if it doesn't exist (Fabric v6)
-        const brush = new fabric.PencilBrush(canvas);
-        canvas.freeDrawingBrush = brush;
-      }
-      canvas.freeDrawingBrush.color = penColor;
-      canvas.freeDrawingBrush.width = penSize;
+    if (!canvas) return;
+    
+    if (!canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
     }
+    canvas.freeDrawingBrush.color = penColor;
+    canvas.freeDrawingBrush.width = penSize;
   }, [canvas, penColor, penSize]);
 
+  // ==================== Document Load Handlers ====================
+  
+  /**
+   * Called when PDF document loads successfully.
+   */
   const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
   };
 
+  /**
+   * Called when a PDF page loads. Sets canvas dimensions to match.
+   */
   const onPageLoadSuccess = (page) => {
     const viewport = page.getViewport({ scale: 1.5 });
     setPdfDimensions({
@@ -142,75 +236,88 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
     });
   };
 
+  /**
+   * Called when an image loads. Calculates optimal display size.
+   */
   const onImageLoad = (e) => {
-      const { naturalWidth, naturalHeight } = e.target;
-      
-      // Calculate scale to fit within a reasonable workspace (standard laptop screen)
-      const MAX_WIDTH = 1000;
-      const MAX_HEIGHT = 800;
-      
-      let scale = 1;
-      if (naturalWidth > MAX_WIDTH || naturalHeight > MAX_HEIGHT) {
-         const scaleX = MAX_WIDTH / naturalWidth;
-         const scaleY = MAX_HEIGHT / naturalHeight;
-         scale = Math.min(scaleX, scaleY);
-      }
-
-      const finalWidth = naturalWidth * scale;
-      const finalHeight = naturalHeight * scale;
-
-      setPdfDimensions({
-          width: finalWidth,
-          height: finalHeight
-      });
-      
-      // Store original dimensions for saving
-      setOriginalDimensions({ width: naturalWidth, height: naturalHeight });
+    const { naturalWidth, naturalHeight } = e.target;
+    
+    const { width, height } = calculateDisplayDimensions(naturalWidth, naturalHeight);
+    
+    setPdfDimensions({ width, height });
+    setOriginalDimensions({ width: naturalWidth, height: naturalHeight });
   };
 
+  // ==================== Drawing Actions ====================
+  
+  /**
+   * Removes the last drawn object (undo).
+   */
   const handleUndo = () => {
-    if (canvas) {
-      const objects = canvas.getObjects();
-      if (objects.length > 0) {
-        canvas.remove(objects[objects.length - 1]);
-        canvas.renderAll();
-      }
+    if (!canvas) return;
+    
+    const objects = canvas.getObjects();
+    if (objects.length > 0) {
+      canvas.remove(objects[objects.length - 1]);
+      canvas.renderAll();
     }
   };
 
+  /**
+   * Clears all annotations from the current page.
+   */
   const handleClear = () => {
     if (canvas) {
       canvas.clear();
     }
   };
 
-  // Helper to save current page annotations to state
+  /**
+   * Saves current page annotations to state (used before page change).
+   */
   const saveCurrentPageAnnotations = () => {
-      if (canvas) {
-          const json = canvas.toJSON();
-          setPageAnnotations(prev => ({
-              ...prev,
-              [currentPage]: json
-          }));
-      }
+    if (!canvas) return;
+    
+    const json = canvas.toJSON();
+    setPageAnnotations(prev => ({
+      ...prev,
+      [currentPage]: json,
+    }));
   };
 
-
+  // ==================== Save Handlers ====================
+  
+  /**
+   * Main save handler. Collects all annotations and saves document.
+   */
   const handleSave = async () => {
     if (!canvas) return;
+    if (requireComment && !comment.trim()) {
+      alert("Please add a comment describing your changes before saving.");
+      return;
+    }
 
-    // Save the CURRENT page's annotations first
+    // Save current page annotations first
     const currentJson = canvas.toJSON();
     const allAnnotations = { ...pageAnnotations, [currentPage]: currentJson };
 
     setIsLoading(true);
+    
     try {
-        if (isPdf) {
-            await handleSavePdf(allAnnotations);
-        } else {
-            // For Images, we only support single page anyway for now (Page 1)
-            await handleSaveImage(currentJson);
-        }
+      let blob;
+      
+      if (isPdf) {
+        blob = await saveAnnotatedPdf({ pdfUrl, allAnnotations });
+      } else {
+        blob = await saveAnnotatedImage({
+          imageUrl: pdfUrl,
+          annotationsJson: currentJson,
+          displayDimensions: pdfDimensions,
+          originalDimensions,
+        });
+      }
+      
+      await onSave(blob, comment);
     } catch (error) {
       console.error('Error saving annotations:', error);
       alert('Failed to save annotations. Please try again.');
@@ -219,147 +326,12 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
     }
   };
 
-  const handleSaveImage = async (annotationsJson) => {
-      // Use original dimensions if available (for high quality), else fallback to current canvas size
-      const targetWidth = originalDimensions ? originalDimensions.width : pdfDimensions.width;
-      const targetHeight = originalDimensions ? originalDimensions.height : pdfDimensions.height;
-      
-      // Calculate scale factor (how much bigger is the original than the displayed canvas?)
-      const scaleFactor = originalDimensions ? (originalDimensions.width / pdfDimensions.width) : 1;
-
-      console.log(`Saving image. Original: ${targetWidth}x${targetHeight}, Display: ${pdfDimensions.width}x${pdfDimensions.height}, Scale: ${scaleFactor}`);
-      
-      const tempCanvasEl = document.createElement('canvas');
-      tempCanvasEl.width = targetWidth;
-      tempCanvasEl.height = targetHeight;
-      
-      const staticCanvas = new fabric.StaticCanvas(tempCanvasEl, {
-          width: targetWidth,
-          height: targetHeight
-      });
-
-      // Load original image as background
-      await new Promise((resolve, reject) => {
-          fabric.FabricImage.fromURL(pdfUrl, { crossOrigin: 'anonymous' }).then((img) => {
-              // Scale image to match target dimensions (which should be its natural size)
-              img.scaleToWidth(targetWidth);
-              staticCanvas.backgroundImage = img;
-              staticCanvas.renderAll();
-              resolve();
-          }).catch(reject);
-      });
-
-      // Load Annotations
-      if (annotationsJson.objects && annotationsJson.objects.length > 0) {
-          try {
-              const enlivenedObjects = await fabric.util.enlivenObjects(annotationsJson.objects);
-              enlivenedObjects.forEach((obj) => {
-                  // Scale the object position and size
-                  obj.left *= scaleFactor;
-                  obj.top *= scaleFactor;
-                  obj.scaleX *= scaleFactor;
-                  obj.scaleY *= scaleFactor;
-                  
-                  // Scale stroke width if it exists
-                  if (obj.strokeWidth) {
-                      obj.strokeWidth *= scaleFactor;
-                  }
-                  
-                  // Handle path objects specifically if needed, but scaleX/Y usually handles it.
-                  // Update coordinates
-                  obj.setCoords();
-                  
-                  staticCanvas.add(obj);
-              });
-              staticCanvas.renderAll();
-          } catch (err) {
-              console.error('Error enlivening objects for image:', err);
-          }
-      }
-
-      // Export to Blob
-      // Use multiplier 1 since we sized the canvas to the target size already
-      const dataUrl = staticCanvas.toDataURL({ format: 'png', quality: 1.0 });
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      
-      await onSave(blob);
-      staticCanvas.dispose();
-  };
-
-  const handleSavePdf = async (allAnnotations) => {
-      // Fetch the original PDF
-      const response = await fetch(pdfUrl);
-      const pdfBytes = await response.arrayBuffer();
-
-      // Load the PDF with pdf-lib
-      const pdfDoc = await PDFDocument.load(pdfBytes);
-      const pages = pdfDoc.getPages();
-      
-      console.log('Starting PDF save. Total annotated pages identified:', Object.keys(allAnnotations).length);
-
-      for (const [pageIndexStr, json] of Object.entries(allAnnotations)) {
-          const pageIndex = parseInt(pageIndexStr, 10);
-          
-          if (!json.objects || json.objects.length === 0) continue;
-
-          const pdfPage = pages[pageIndex - 1]; // 1-based index from UI
-          if (!pdfPage) continue;
-
-          const { width, height } = pdfPage.getSize();
-          const targetWidth = width * 1.5;
-          const targetHeight = height * 1.5;
-
-          const tempCanvasEl = document.createElement('canvas');
-          tempCanvasEl.width = targetWidth;
-          tempCanvasEl.height = targetHeight;
-          
-          const staticCanvas = new fabric.StaticCanvas(tempCanvasEl, {
-              width: targetWidth,
-              height: targetHeight
-          });
-
-          if (json.objects && json.objects.length > 0) {
-              try {
-                  const enlivenedObjects = await fabric.util.enlivenObjects(json.objects);
-                  if (enlivenedObjects.length === 0) {
-                      console.warn(`Page ${pageIndex}: Failed to enliven objects.`);
-                  } else {
-                      enlivenedObjects.forEach((obj) => {
-                          obj.setCoords();
-                          staticCanvas.add(obj);
-                      });
-                      staticCanvas.renderAll();
-                  }
-              } catch (err) {
-                  console.error(`Page ${pageIndex}: Error invoking enlivenObjects:`, err);
-              }
-          }
-
-          const annotationsDataURL = staticCanvas.toDataURL({
-              format: 'png',
-              quality: 1,
-              multiplier: 2 
-          });
-
-          const pngImageBytes = await fetch(annotationsDataURL).then(res => res.arrayBuffer());
-          const annotationsImg = await pdfDoc.embedPng(pngImageBytes);
-          
-          pdfPage.drawImage(annotationsImg, {
-              x: 0,
-              y: 0,
-              width: width,
-              height: height,
-          });
-          
-          staticCanvas.dispose();
-      }
-
-      const modifiedPdfBytes = await pdfDoc.save();
-      const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
-      await onSave(blob);
-  };
-
+  // ==================== Page Navigation ====================
+  
+  /**
+   * Changes PDF page with annotation persistence.
+   * @param {number} offset - Page offset (+1 or -1)
+   */
   const changePage = (offset) => {
     saveCurrentPageAnnotations();
     setCurrentPage((prevPage) => {
@@ -368,13 +340,16 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
     });
   };
 
+  // ==================== Render ====================
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
       <div className="flex h-full w-full max-w-7xl flex-col bg-white">
+        
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-6 py-4">
           <h2 className="text-xl font-semibold text-gray-900">
-              Edit {isPdf ? 'Document' : 'Image'}
+            Edit {isPdf ? 'Document' : 'Image'}
           </h2>
           <div className="flex items-center gap-3">
             <button
@@ -385,8 +360,8 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
             </button>
             <button
               onClick={handleSave}
-              disabled={isLoading}
-              className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+              disabled={isLoading || (requireComment && !comment.trim())}
+              className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="h-4 w-4" />
               {isLoading ? 'Saving...' : 'Save Annotations'}
@@ -394,8 +369,9 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
           </div>
         </div>
 
-        {/* Toolbar */}
+        {/* Drawing Toolbar */}
         <div className="flex items-center gap-4 border-b border-gray-200 bg-gray-50 px-6 py-3">
+          {/* Pen Size */}
           <div className="flex items-center gap-2">
             <Pencil className="h-4 w-4 text-gray-600" />
             <label className="text-sm font-medium text-gray-700">Pen Size:</label>
@@ -410,6 +386,7 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
             <span className="text-sm text-gray-600">{penSize}px</span>
           </div>
 
+          {/* Pen Color */}
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-700">Color:</label>
             <input
@@ -420,6 +397,7 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
             />
           </div>
 
+          {/* Undo/Clear Buttons */}
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={handleUndo}
@@ -438,46 +416,46 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
           </div>
         </div>
 
-        {/* Viewer with Canvas Overlay */}
+        {/* Document Viewer with Canvas Overlay */}
         <div className="flex-1 overflow-auto bg-gray-100 p-6">
           <div className="flex justify-center">
             <div className="relative inline-block" ref={pageRef}>
               <div className="relative">
                 {isPdf ? (
-                    <Document
-                        file={pdfUrl}
-                        onLoadSuccess={onDocumentLoadSuccess}
-                        loading={
-                            <div className="flex items-center justify-center py-20">
-                                <div className="text-gray-600">Loading PDF...</div>
-                            </div>
-                        }
-                        error={
-                            <div className="flex items-center justify-center py-20">
-                                <div className="text-red-600">Failed to load PDF</div>
-                            </div>
-                        }
-                    >
-                        <Page
-                            pageNumber={currentPage}
-                            scale={1.5}
-                            onLoadSuccess={onPageLoadSuccess}
-                            renderTextLayer={false}
-                            renderAnnotationLayer={false}
-                        />
-                    </Document>
-                ) : (
-                    <img 
-                        src={pdfUrl} 
-                        onLoad={onImageLoad}
-                        style={{ 
-                            display: 'block', 
-                            maxWidth: 'none',
-                            width: `${pdfDimensions.width}px`,
-                            height: `${pdfDimensions.height}px`
-                        }} 
-                        alt="To annotate"
+                  <Document
+                    file={pdfUrl}
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    loading={
+                      <div className="flex items-center justify-center py-20">
+                        <div className="text-gray-600">Loading PDF...</div>
+                      </div>
+                    }
+                    error={
+                      <div className="flex items-center justify-center py-20">
+                        <div className="text-red-600">Failed to load PDF</div>
+                      </div>
+                    }
+                  >
+                    <Page
+                      pageNumber={currentPage}
+                      scale={1.5}
+                      onLoadSuccess={onPageLoadSuccess}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
                     />
+                  </Document>
+                ) : (
+                  <img 
+                    src={pdfUrl} 
+                    onLoad={onImageLoad}
+                    style={{ 
+                      display: 'block', 
+                      maxWidth: 'none',
+                      width: `${pdfDimensions.width}px`,
+                      height: `${pdfDimensions.height}px`,
+                    }} 
+                    alt="Document to annotate"
+                  />
                 )}
 
                 {/* Drawing Canvas Overlay */}
@@ -496,38 +474,70 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
           </div>
         </div>
 
-        {/* Page Navigation (PDF Only) */}
-        {isPdf && numPages && numPages > 1 && (
-          <div className="flex items-center justify-center gap-4 border-t border-gray-200 bg-gray-50 px-6 py-4">
-            <button
-              onClick={() => changePage(-1)}
-              disabled={currentPage <= 1}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <p className="text-sm text-gray-600">
-              Page {currentPage} of {numPages}
-            </p>
-            <button
-              onClick={() => changePage(1)}
-              disabled={currentPage >= numPages}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        )}
+        {/* Comment Field and Footer */}
+        <div className="border-t border-gray-200 bg-gray-50">
+          
+          {/* Required Comment Field */}
+          {requireComment && (
+            <div className="px-6 pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageSquare className="h-4 w-4 text-green-600" />
+                <label className="text-sm font-bold text-gray-800">
+                  Comment Required <span className="text-red-500">*</span>
+                </label>
+              </div>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Please describe your annotations or changes..."
+                className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                rows={2}
+                disabled={isLoading}
+              />
+            </div>
+          )}
+
+          {/* Page Navigation (PDF Only) */}
+          {isPdf && numPages && numPages > 1 && (
+            <div className="flex items-center justify-center gap-4 px-6 py-4">
+              <button
+                onClick={() => changePage(-1)}
+                disabled={currentPage <= 1}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <p className="text-sm text-gray-600">
+                Page {currentPage} of {numPages}
+              </p>
+              <button
+                onClick={() => changePage(1)}
+                disabled={currentPage >= numPages}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
+          
+          {/* Spacer if no pagination but needs padding bottom */}
+          {(!isPdf || !numPages || numPages <= 1) && requireComment && (
+            <div className="h-4"></div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
+
+// ==================== PropTypes ====================
 
 PdfEditor.propTypes = {
   pdfUrl: PropTypes.string.isRequired,
   isPdf: PropTypes.bool,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  requireComment: PropTypes.bool,
 };
 
 export default PdfEditor;

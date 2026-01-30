@@ -11,6 +11,7 @@ import {
   signOut as firebaseSignOut,
 } from "firebase/auth";
 import { auth, ensureUserDocument } from "../../firebase";
+import apiService from "../../services/apiService";
 
 const AuthContext = createContext({
   user: null,
@@ -32,8 +33,12 @@ export const AuthProvider = ({ children }) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      // Always clear cache when auth state changes to prevent cross-user data leakage
+      apiService.resetSeasonProjectsCache();
+      
       if (!currentUser) {
         setUser(null);
         setProfile(null);
@@ -64,6 +69,8 @@ export const AuthProvider = ({ children }) => {
       isAdmin: Boolean(profile?.isAdmin),
       loading,
       async signOut() {
+        // Clear cached project data before signing out
+        apiService.resetSeasonProjectsCache();
         await firebaseSignOut(auth);
         setProfile(null);
         setUser(null);

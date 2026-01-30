@@ -1,11 +1,11 @@
 // src/features/admin/pages/AdminDashboard.jsx
 import { useState, useEffect, useCallback } from "react";
-import AddNewFolderIcon from "../../../assets/icons/addNewFolder.svg?react";
+
 
 import SeasonCard from "../components/SeasonCard";
 import SearchBar from "../../../components/ui/SearchBar";
 import Modal from "../../../components/common/Modal";
-import AddSeasonForm from "../components/AddSeasonForm";
+
 import apiService from "../../../services/apiService";
 import { AlertCircle } from "lucide-react";
 
@@ -15,8 +15,6 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionError, setActionError] = useState(null);
-  const [isAddSeasonModalOpen, setIsAddSeasonModalOpen] = useState(false);
-  const [isSubmittingSeason, setIsSubmittingSeason] = useState(false);
 
   const loadDashboardData = useCallback(async () => {
     setLoading(true);
@@ -63,35 +61,7 @@ const AdminDashboard = () => {
     loadDashboardData();
   }, [loadDashboardData]);
 
-  const handleOpenAddSeasonModal = () => {
-    setActionError(null);
-    setIsAddSeasonModalOpen(true);
-  };
 
-  const handleCloseAddSeasonModal = () => {
-    if (isSubmittingSeason) {
-      return;
-    }
-    setIsAddSeasonModalOpen(false);
-    setActionError(null);
-  };
-
-  const handleSeasonAdd = async (newSeasonYear) => {
-    setIsSubmittingSeason(true);
-    setActionError(null);
-    try {
-      await apiService.addSeason(newSeasonYear);
-      await loadDashboardData();
-      handleCloseAddSeasonModal();
-    } catch (err) {
-      console.error("Dashboard: Failed to add season:", err);
-      setActionError(
-        `Failed to add season '${newSeasonYear}'. Error: ${err.message || "Please try again."}`
-      );
-    } finally {
-      setIsSubmittingSeason(false);
-    }
-  };
 
   const handleSeasonDelete = async (seasonId, seasonYear) => {
     setActionError(null);
@@ -141,7 +111,7 @@ const AdminDashboard = () => {
     if (seasons.length === 0) {
       return (
         <div className="text-center text-gray-500 py-10 bg-white rounded-lg shadow-sm p-8">
-          No seasons found. Click &apos;Add New Folder&apos; to create one.
+          No seasons found.
         </div>
       );
     }
@@ -156,7 +126,7 @@ const AdminDashboard = () => {
 
     return (
       <>
-        {actionError && !isAddSeasonModalOpen && (
+        {actionError && (
           <div className="mb-4 text-center text-red-500 bg-red-100 p-3 rounded-lg flex items-center justify-center shadow-sm">
             <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" /> {actionError}
           </div>
@@ -180,13 +150,6 @@ const AdminDashboard = () => {
         <div className="flex flex-col sm:flex-row justify-between sm:items-center">
           <div className="mb-4 sm:mb-0">
             <h1 className="text-2xl font-semibold mb-2">Your Reforestation Seasons</h1>
-            <button
-              onClick={handleOpenAddSeasonModal}
-              className="flex items-center px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <AddNewFolderIcon className="w-5 h-5 mr-2 fill-current" />
-              Add New Folder
-            </button>
           </div>
         </div>
 
@@ -201,24 +164,6 @@ const AdminDashboard = () => {
 
       {renderContent()}
 
-      <Modal
-        isOpen={isAddSeasonModalOpen}
-        onClose={handleCloseAddSeasonModal}
-        title="Add New Season"
-      >
-        <AddSeasonForm
-          onSubmit={handleSeasonAdd}
-          onCancel={handleCloseAddSeasonModal}
-          existingSeasons={seasons}
-          isLoading={isSubmittingSeason}
-        />
-        {actionError && isAddSeasonModalOpen && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center">
-            <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-            {actionError}
-          </div>
-        )}
-      </Modal>
     </>
   );
 };

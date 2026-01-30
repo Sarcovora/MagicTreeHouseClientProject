@@ -55,9 +55,23 @@ app.use((err, req, res, next) => {
 });
 
 // --- Start Server ---
-app.listen(PORT, () => {
+// --- Start Server ---
+const server = app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
     if (!process.env.AIRTABLE_PAT || !process.env.AIRTABLE_BASE_ID || !process.env.AIRTABLE_TABLE_ID) {
         console.warn('WARN: Airtable environment variables (PAT, BASE_ID, TABLE_ID) are not fully set. API calls might fail.');
     }
 });
+
+server.on('close', () => {
+    // console.log('Server Connection Closed');
+});
+
+process.on('SIGTERM', () => {
+    console.log('Received SIGTERM');
+    process.exit(0);
+});
+
+// KEEP-ALIVE: Prevent event loop from draining immediately
+// Ensures the server stays running even if no active handles are detected temporarily
+setInterval(() => {}, 60000);

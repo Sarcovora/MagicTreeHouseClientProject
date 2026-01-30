@@ -1,614 +1,97 @@
 // src/features/admin/pages/ProjectDetail.jsx
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
   ArrowLeft,
-  Edit,
-  Loader2,
-  MapPin,
-  Pencil,
-  Plus,
-  Trash2,
   User,
-  MessageSquare,
+  MapPin,
   Image as ImageIcon,
-  FileText,
-  Download,
 } from "lucide-react";
+
+// ==================== Common Components ====================
 import Carousel from "../../../components/common/Carousel";
 import InfoCard from "../../../components/common/InfoCard";
 import InfoField from "../../../components/common/InfoField";
 import DateSelectionModal from "../../../components/common/DateSelectionModal";
+
+// ==================== Feature Components ====================
 import PdfEditor from "../components/PdfEditor";
-import apiService from "../../../services/apiService";
+import DocumentTile from "../components/DocumentTile";
+import DraftMapCommentModal from "../components/DraftMapCommentModal";
+import MediaGridItem from "../components/MediaGridItem";
+import PhotoUploadButton from "../components/PhotoUploadButton";
+import ProjectSelector from "../../landowner/components/ProjectSelector";
+
+// ==================== Hooks & Constants ====================
 import { useAuth } from "../../auth/AuthProvider";
-import { useToast } from "../../../contexts/ToastContext";
+import { formatDate, ensureText, ensureArray } from "../utils/projectHelpers";
+import { DOCUMENT_SLOTS, TIMELINE_PHASES } from "../constants/projectConstants";
+import { useProjectData } from "../hooks/useProjectData";
+import { useDocumentManagement } from "../hooks/useDocumentManagement";
+import { usePhotoManagement } from "../hooks/usePhotoManagement";
+import { usePdfEditor } from "../hooks/usePdfEditor";
+import { useCommentLogic } from "../hooks/useCommentLogic";
 
-const formatDate = (value) => {
-  if (!value) {
-    return "Not recorded";
-  }
-  const normalized = value.includes("T") ? value : `${value}T00:00:00`;
-  const parsed = new Date(normalized);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-};
-
-const isImage = (file) => {
-  if (!file) return false;
-  const url = typeof file === 'string' ? file : file.url;
-  if (!url) return false;
-  
-  const cleanUrl = url.split("?")[0].toLowerCase();
-  // Optimistic check: Assume likely image unless it has a known non-image extension
-  const knownNonImageExts = [
-    ".zip",
-    ".pdf",
-    ".doc",
-    ".docx",
-    ".xls",
-    ".xlsx",
-    ".csv",
-    ".txt",
-    ".rar",
-    ".7z",
-    ".tar",
-    ".gz",
-  ];
-  return !knownNonImageExts.some((ext) => cleanUrl.endsWith(ext));
-};
-
-const MediaGridItem = ({ photo, idx, openLightbox }) => {
-  const [hasError, setHasError] = useState(false);
-  const url = typeof photo === 'string' ? photo : photo.url;
-  const thumbnail = typeof photo === 'string' ? photo : (photo.thumbnail || photo.url);
-  const isImg = !hasError && isImage(url);
-
-  if (isImg) {
-    return (
-      <div
-        className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50"
-        onClick={() => openLightbox(url)}
-      >
-        <img
-          src={thumbnail}
-          alt={`Planting or before photo ${idx + 1}`}
-          className="h-24 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
-          onError={() => setHasError(true)}
-          loading="lazy"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      download
-      className="flex h-24 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 p-2 text-center text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
-    >
-      <FileText className="mb-1 h-8 w-8 text-gray-400" />
-      <div className="flex items-center text-xs font-medium">
-        <Download className="mr-1 h-3 w-3" />
-        Download
-      </div>
-    </a>
-  );
-};
-
-const ensureText = (value, fallback = "Not provided") =>
-  value ? String(value) : fallback;
-
-const ensureArray = (value) =>
-  Array.isArray(value) ? value.filter(Boolean) : value ? [value] : [];
-
-
-const DOCUMENT_SLOTS = [
-  {
-    key: "carbonDocs",
-    label: "Carbon Docs (Notarized)",
-    description: "Signed documentation verifying carbon credits.",
-    fallbackField: "carbonDocs",
-  },
-  {
-    key: "draftMap",
-    label: "Draft Map",
-    description: "Latest GIS draft map uploaded for review.",
-    fallbackField: "draftMapUrl",
-  },
-  {
-    key: "finalMap",
-    label: "Final Map",
-    description: "Approved planting map for this site.",
-    fallbackField: "finalMapUrl",
-  },
-  {
-    key: "replantingMap",
-    label: "Replanting Map",
-    description: "Map for replanting scope and revisions.",
-    fallbackField: "replantingMapUrl",
-  },
-  {
-    key: "otherAttachments",
-    label: "Other Attachments",
-    description: "Supplemental project documents.",
-    fallbackField: "otherAttachments",
-  },
-  {
-    key: "postPlantingReports",
-    label: "Post-Planting Reports",
-    description: "Reports documenting post-planting observations.",
-    fallbackField: "postPlantingReports",
-  },
-];
-
-// --- Draft Map Comment Modal ---
-const DraftMapCommentModal = ({ isOpen, onClose, onSubmit, isSubmitting }) => {
-  const [comment, setComment] = useState("");
-
-  if (!isOpen) return null;
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(comment);
-    setComment("");
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl animate-fade-in-up">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">Add Draft Map Comment</h3>
-        <form onSubmit={handleSubmit}>
-          <textarea
-            className="w-full rounded-md border border-gray-300 p-3 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-            rows={4}
-            placeholder="Enter your feedback regarding the draft map..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            required
-            disabled={isSubmitting}
-          />
-          <div className="mt-6 flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-70"
-              disabled={isSubmitting}
-            >
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Submit Comment
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-const DocumentTile = ({
-  slot,
-  files,
-  onUpload,
-  onDelete,
-  onEdit,
-  isUploading,
-  isDeleting,
-  isAdmin,
-  comments, // String blob from Airtable
-  onAddComment, // Handler
-}) => {
-  const fileInputRef = useRef(null);
-  const [selectedVersionIndex, setSelectedVersionIndex] = useState(null);
-
-  const handleFileChange = async (event) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      await onUpload(slot.key, selectedFile);
-    }
-    event.target.value = "";
-  };
-
-  const openPicker = () => {
-    fileInputRef.current?.click();
-  };
-
-  // Helper to extract URL and metadata
-  const getFileInfo = (file) => { // file can be string or object
-      if (!file) return { url: '', filename: '', extension: '' };
-      const url = typeof file === 'object' ? file.url : file;
-      const filename = typeof file === 'object' ? file.filename : '';
-      
-      // Determine extension from filename if available, else from URL
-      let extension = '';
-      if (filename) {
-          extension = filename.split('.').pop().toLowerCase();
-      } else {
-          // Fallback to URL parsing (less reliable for signed URLs)
-          const cleanUrl = url.split('?')[0].toLowerCase();
-          if (cleanUrl.match(/\.[a-z0-9]+$/)) {
-              extension = cleanUrl.split('.').pop();
-          }
-      }
-      return { url, filename, extension };
-  };
-
-  const handleEdit = () => {
-    if (onEdit) {
-      // Use selected version, or default to newest (last in array)
-      const indexToEdit = selectedVersionIndex !== null ? selectedVersionIndex : files.length - 1;
-      const fileData = files[indexToEdit];
-      const { url, extension } = getFileInfo(fileData);
-      
-      // Robust detection using explicit extension from metadata
-      const hasImageExt = ['png', 'jpg', 'jpeg'].includes(extension);
-      const hasPdfExt = extension === 'pdf';
-      
-      // Logic: It is PDF if explicit pdf extension, OR (if extension matches nothing known or is missing AND it's draftMap)
-      // This is safer now that we have real filenames.
-      const isPdf = hasPdfExt || (slot.key === 'draftMap' && !hasImageExt);
-      
-      const filename = typeof fileData === 'object' ? fileData.filename : '';
-      
-      onEdit(slot.key, url, isPdf, filename);
-    }
-  };
-
-  const inputId = `upload-${slot.key}`;
-  
-  // (primaryFile logic moved below to respect selectedVersionIndex)
-
-  const canEdit = slot.key === 'draftMap' && files.length > 0;
-
-  // Landowners can only upload versions if a file already exists. Initial upload is Admin only.
-  const canModify = isAdmin || (slot.key === 'draftMap' && files.length > 0);
-  
-  if (files.length === 0 || isUploading) {
-      if (!canModify && files.length === 0) {
-        return (
-             <div className="flex h-full flex-col justify-between rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50/50 p-4 text-center">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{slot.label}</p>
-                  <p className="mt-2 text-xs text-gray-500">{slot.description}</p>
-                  <p className="mt-4 text-xs italic text-gray-400">No document uploaded.</p>
-                </div>
-             </div>
-        );
-      }
-    return (
-      <div className="flex h-full flex-col justify-between rounded-2xl border-2 border-dashed border-green-500/40 bg-green-50/50 p-4 text-center">
-        <div>
-          <p className="text-sm font-semibold text-gray-800">{slot.label}</p>
-          <p className="mt-2 text-xs text-gray-500">{slot.description}</p>
-        </div>
-        <div className="mt-6">
-          <button
-            type="button"
-            onClick={openPicker}
-            className={`inline-flex items-center justify-center rounded-full border border-green-600/30 bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-green-500/20 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 ${
-              isUploading
-                ? "cursor-not-allowed opacity-70"
-                : "hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-md active:translate-y-0"
-            }`}
-            disabled={isUploading}
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading to Airtable...
-              </>
-            ) : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Upload Document
-              </>
-            )}
-          </button>
-          <input
-            id={inputId}
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleFileChange}
-            disabled={isUploading}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // Use the selected version if available, otherwise the newest (last) for Draft Map, or first for others.
-  const indexToUse = selectedVersionIndex !== null 
-      ? selectedVersionIndex 
-      : (slot.key === 'draftMap' ? files.length - 1 : 0);
-      
-  const primaryFile = files[indexToUse];
-  const { url: primaryUrl } = getFileInfo(primaryFile);
-
-  const isBusy = isUploading || isDeleting;
-  const disabledLinkClass = isBusy ? "pointer-events-none opacity-60" : "";
-
-  return (
-    <div className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {slot.label}
-      </p>
-      <div className="mt-3 flex-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
-          File attached
-        </p>
-        <p className="mt-2 text-xs text-gray-500 line-clamp-3">
-          {slot.description}
-        </p>
-        {files.length > 1 && (
-          <p className="mt-2 text-xs text-gray-400">
-            +{files.length - 1} additional file
-            {files.length - 1 > 1 ? "s" : ""}
-          </p>
-        )}
-      </div>
-
-      {/* Version Selector for Draft Map with multiple files */}
-      {canEdit && files.length > 1 && (
-        <div className="mt-3">
-          <label className="text-xs font-medium text-gray-600">Edit version:</label>
-          <select
-            value={selectedVersionIndex !== null ? selectedVersionIndex : files.length - 1}
-            onChange={(e) => setSelectedVersionIndex(Number(e.target.value))}
-            className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-xs"
-          >
-            {files.map((_, index) => (
-              <option key={index} value={index}>
-                Version {index + 1}
-              </option>
-            )).reverse()}
-          </select>
-        </div>
-      )}
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <a
-          href={primaryUrl}
-          target="_blank"
-          rel="noreferrer"
-          className={`flex-1 rounded-lg border border-green-600/30 bg-green-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm shadow-green-500/20 transition hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 ${disabledLinkClass}`}
-        >
-          View
-        </a>
-        {canEdit && (
-          <button
-            type="button"
-            onClick={handleEdit}
-            className={`rounded-lg border border-blue-600/30 bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 ${
-              isBusy ? "opacity-70 cursor-not-allowed" : ""
-            }`}
-            disabled={isBusy}
-          >
-            <span className="flex items-center">
-              <Pencil className="mr-1 h-4 w-4" />
-              Edit
-            </span>
-          </button>
-        )}
-        {/* Only show Replace button if user has permission */}
-        {(isAdmin || slot.key === 'draftMap') && (
-        <button
-          type="button"
-          onClick={openPicker}
-          className={`rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 ${
-            isBusy ? "opacity-70" : ""
-          }`}
-          disabled={isBusy}
-        >
-          {isUploading ? (
-            <span className="flex items-center">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Uploading to Airtable...
-            </span>
-          ) : isDeleting ? (
-            <span className="flex items-center">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Deleting...
-            </span>
-          ) : (
-            (!isAdmin && slot.key === 'draftMap') ? "Upload New Version" : "Replace"
-          )}
-        </button>
-        )}
-        {/* Only allow deletion if Admin. User explicitly requested landowners CANNOT delete. */}
-        {isAdmin && (
-        <button
-          type="button"
-          onClick={() => onDelete?.(slot)}
-          className={`rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 ${
-            isBusy ? "opacity-70" : ""
-          }`}
-          disabled={isBusy}
-        >
-          Delete
-        </button>
-        )}
-        {(isAdmin || slot.key === 'draftMap') && (
-        <input
-          id={inputId}
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          onChange={handleFileChange}
-          disabled={isBusy}
-        />
-        )}
-      </div>
-
-      {/* Draft Map Comments Section */}
-      {slot.key === 'draftMap' && (
-        <div className="mt-4 border-t border-gray-100 pt-3">
-          {/* Admin View: Show most recent comment */}
-          {isAdmin && comments && (
-             <div className="rounded-md bg-yellow-50 p-3">
-                <p className="text-xs font-semibold text-yellow-800 mb-1">Latest Landowner Comment:</p>
-                <div className="text-xs text-yellow-700 whitespace-pre-wrap max-h-24 overflow-y-auto">
-                   {/* Extract first comment block (split by double newline usually) */}
-                   {comments.split('\n\n')[0]}
-                </div>
-             </div>
-          )}
-
-          {/* Landowner View: Add Comment Button */}
-          {!isAdmin && files.length > 0 && (
-            <button
-                onClick={() => onAddComment?.()}
-                className="mt-2 flex w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 active:scale-[0.98]"
-            >
-                <MessageSquare className="mr-2 h-4 w-4 text-gray-500" />
-                Add Comment / Feedback
-            </button>
-          )} 
-        </div>
-      )}
-    </div>
-  );
-};
-
-const PhotoUploadButton = ({ label, slotKey, onUpload, isUploading }) => {
-  const fileInputRef = useRef(null);
-
-  const handleFileChange = async (event) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      await onUpload(slotKey, selectedFile);
-    }
-    event.target.value = "";
-  };
-
-  return (
-    <div className="flex">
-      <button
-        type="button"
-        onClick={() => fileInputRef.current?.click()}
-        className={`inline-flex items-center justify-center rounded-full border border-green-600/30 bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-green-500/20 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 ${
-          isUploading
-            ? "cursor-not-allowed opacity-70"
-            : "hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-md active:translate-y-0"
-        }`}
-        disabled={isUploading}
-      >
-        {isUploading ? "Uploading..." : label}
-      </button>
-      <input
-        type="file"
-        accept="image/*,.zip,application/zip,application/x-zip-compressed"
-        ref={fileInputRef}
-        className="hidden"
-        onChange={handleFileChange}
-        disabled={isUploading}
-      />
-    </div>
-  );
-};
-
-
+// ==================== Main Component ====================
 
 const ProjectDetail = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const { id: projectId } = useParams();
-  const [project, setProject] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [possibleMatches, setPossibleMatches] = useState([]);
-  const [docUploadState, setDocUploadState] = useState({ key: null, error: null });
-  const [docDeleteState, setDocDeleteState] = useState({ key: null, error: null });
-  const [photoUploadState, setPhotoUploadState] = useState({ key: null, error: null });
-  const [lightboxImage, setLightboxImage] = useState(null);
-  const [pendingPhotoUpload, setPendingPhotoUpload] = useState(null); // { file, slotKey }
-  const [pdfEditorState, setPdfEditorState] = useState({ isOpen: false, pdfUrl: null, documentType: null, filename: null });
-  const { addToast } = useToast();
 
-  const loadProjectDetails = useCallback(async () => {
-    if (!projectId) {
-      setError("Project ID is missing.");
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await apiService.getProjectDetails(projectId);
-      if (data) {
-        setProject(data);
-      } else {
-        setError(`Project with ID ${projectId} not found.`);
-      }
-    } catch (err) {
-      console.error("Failed to fetch project details:", err);
-      setError("Could not load project details. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
+  // --- Hooks ---
+  const {
+    project,
+    setProject,
+    loading,
+    error,
+    setError,
+    landownerProjects,
+    loadProjectDetails,
+  } = useProjectData(projectId);
 
-  // --- Comment Logic ---
-  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const {
+    docUploadState,
+    docDeleteState,
+    handleDocumentUpload,
+    handleDocumentDelete
+  } = useDocumentManagement(projectId, project, loadProjectDetails);
 
-  const handleAddComment = async (comment) => {
-      setIsSubmittingComment(true);
-      try {
-          const updatedProject = await apiService.addDraftMapComment(projectId, comment);
-          setProject(updatedProject);
-          setIsCommentModalOpen(false);
-          addToast("Comment added successfully", "success");
-      } catch (err) {
-          console.error("Failed to add comment:", err);
-          setError("Failed to submit comment. Please try again.");
-          addToast("Failed to submit comment", "error");
-      } finally {
-          setIsSubmittingComment(false);
-      }
-  };
+  const {
+    photoUploadState,
+    pendingPhotoUpload,
+    lightboxImage,
+    initiatePhotoUpload,
+    handleDateConfirm,
+    handleDateCancel,
+    openLightbox,
+    closeLightbox
+  } = usePhotoManagement(projectId, loadProjectDetails);
 
-  useEffect(() => {
-    loadProjectDetails();
-  }, [loadProjectDetails]);
+  const {
+    pdfEditorState,
+    handleDocumentEdit,
+    handlePdfEditorSave,
+    handlePdfEditorCancel
+  } = usePdfEditor(projectId, project, handleDocumentUpload);
 
-  const handleDeleteProject = async () => {
-    if (!projectId) {
-      return;
-    }
-    const confirmed = window.confirm(
-      `Are you sure you want to delete project "${project?.name || projectId}"? This action cannot be undone.`
-    );
-    if (!confirmed) {
-      return;
-    }
-    setError(null);
-    try {
-      await apiService.deleteProject(projectId);
-      if (project?.seasonYear) {
-        navigate(`/admin/seasons/${project.seasonYear}`);
-      } else {
-        navigate("/admin/dashboard");
-      }
-    } catch (err) {
-      console.error("Failed to delete project:", err);
-      setError(`Failed to delete project: ${err.message || "Please try again."}`);
-    }
+  const {
+    isCommentModalOpen,
+    isSubmittingComment,
+    commentModalMode,
+    pendingDraftMapUpload,
+    openStandaloneCommentModal,
+    handleDraftMapUploadWithComment,
+    handleAddComment,
+    handleCommentModalClose
+  } = useCommentLogic(projectId, setProject, handleDocumentUpload, setError);
+
+
+  // --- Derived State & Handlers ---
+
+  const handleSelectProject = (newProjectId) => {
+      navigate(`/landowner/project/${newProjectId}`);
   };
 
   const handleGoBack = () => {
@@ -623,18 +106,14 @@ const ProjectDetail = () => {
     navigate("/admin/dashboard");
   };
 
+  // Photos calculation
   const beforePhotos = ensureArray(project?.beforePhotoUrls);
   const plantingPhotos = ensureArray(project?.plantingPhotoUrls);
   const combinedPhotos = Array.from(
     new Set([...beforePhotos, ...plantingPhotos].filter(Boolean))
   );
   const landownerPhotos = ensureArray(project?.propertyImageUrls);
-  const activeCarbonShapefiles = ensureArray(project?.activeCarbonShapefiles);
-  const shapefileSummary =
-    activeCarbonShapefiles.length > 0
-      ? `${activeCarbonShapefiles.length} file${activeCarbonShapefiles.length === 1 ? "" : "s"} available`
-      : "No shape files uploaded yet";
-  // For Carousel, mapped to strings (high-res URLs)
+  
   const carouselImages = useMemo(() => {
     return combinedPhotos.map(p => typeof p === 'string' ? p : p.url);
   }, [combinedPhotos]);
@@ -643,195 +122,15 @@ const ProjectDetail = () => {
     return landownerPhotos.map(p => typeof p === 'string' ? p : p.url);
   }, [landownerPhotos]);
 
-  // For Grid, we use the objects directly (preserving thumbnail info)
-  // No change needed for combinedPhotos itself if we update usage
-
-
-  const handleDocumentUpload = async (slotKey, file) => {
-    if (!projectId || !file) {
-      return;
-    }
-
-    // --- Versioning / Renaming Logic ---
-    // 1. Calculate next version index based on existing files
-    const existingFiles = ensureArray(project?.documents?.[slotKey] || project?.[slotKey] || []); 
-    // Note: fallback fields might need checking if documents[slotKey] is empty but legacy field has data. 
-    // However, resolvedDocumentSlots logic suggests we usually look at projectDocuments first.
-    // To be safe, let's use the same logic as resolvedDocumentSlots to get the *current* count.
-    
-    // Find the slot definition to check fallbacks efficiently if needed, 
-    // or just rely on what we know about the data structure.
-    // Simplest robust way: check the resolved list if possible or reconstruct it.
-    
-    // Let's reconstruct the current file list for this slot to get accurate count
-    const primaryDocs = ensureArray(project?.documents?.[slotKey]);
-    const fallbackDocs = DOCUMENT_SLOTS.find(s => s.key === slotKey)?.fallbackField 
-        ? ensureArray(project?.[DOCUMENT_SLOTS.find(s => s.key === slotKey).fallbackField]) 
-        : [];
-    const currentFiles = primaryDocs.length > 0 ? primaryDocs : fallbackDocs;
-    
-    console.log(`[Upload Debug] slot=${slotKey}, primary=${primaryDocs.length}, fallback=${fallbackDocs.length}, total_current=${currentFiles.length}`);
-
-    const nextVersionIndex = currentFiles.length + 1; // 1-based versioning (Version 1, Version 2...)
-    
-    // 2. Generate new filename: [slotKey]_v[index].[ext]
-    const originalName = file.name;
-    const lastDotIndex = originalName.lastIndexOf(".");
-    const ext = lastDotIndex !== -1 ? originalName.slice(lastDotIndex) : ""; // includes dot
-    const newName = `${slotKey}_v${nextVersionIndex}${ext}`;
-    
-    // 3. Create new File object
-    const renamedFile = new File([file], newName, { type: file.type });
-
-    setDocUploadState({ key: slotKey, error: null });
-    try {
-      await apiService.uploadProjectDocument(projectId, slotKey, renamedFile);
-      // Give Airtable a brief window to finish hosting (especially PDFs) before reloading
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      await loadProjectDetails();
-    } catch (uploadErr) {
-      console.error("Failed to upload document:", uploadErr);
-      setDocUploadState({
-        key: null,
-        error: uploadErr?.message || "Failed to upload document.",
-      });
-      return;
-    }
-    setDocUploadState({ key: null, error: null });
-  };
-
-  const handleDocumentDelete = async (slot) => {
-    if (!projectId || !slot?.key) {
-      return;
-    }
-    const confirmed = window.confirm(
-      `Delete "${slot.label}"? This cannot be undone.`
-    );
-    if (!confirmed) {
-      return;
-    }
-    setDocDeleteState({ key: slot.key, error: null });
-    try {
-      await apiService.deleteProjectDocument(projectId, slot.key);
-      await loadProjectDetails();
-      setDocDeleteState({ key: null, error: null });
-    } catch (deleteErr) {
-      console.error("Failed to delete document:", deleteErr);
-      setDocDeleteState({
-        key: null,
-        error: deleteErr?.message || "Failed to delete document.",
-      });
-    }
-  };
-
-  const handleDocumentEdit = (documentType, pdfUrl, forceIsPdf, filename) => {
-    setPdfEditorState({ isOpen: true, pdfUrl, documentType, isPdf: forceIsPdf, filename });
-  };
-
-  const handlePdfEditorSave = async (blob) => {
-    if (!projectId || !pdfEditorState.documentType) return;
-
-    try {
-      
-      // Determine base filename: use metadata filename if available, else parse URL
-      let currentFileName = pdfEditorState.filename;
-      
-      if (!currentFileName) {
-          const urlParts = pdfEditorState.pdfUrl.split('/');
-          currentFileName = urlParts[urlParts.length - 1].split('?')[0];
-      }
-      
-      // Use state flag if available, otherwise heuristic
-      const isPdf = pdfEditorState.isPdf !== undefined 
-          ? pdfEditorState.isPdf 
-          : currentFileName.toLowerCase().endsWith('.pdf');
-          
-      const outputExt = isPdf ? 'pdf' : 'png'; // PdfEditor exports images as PNG
-
-      // 1. Get current file count for this slot
-      const primaryDocs = ensureArray(project?.documents?.[pdfEditorState.documentType]);
-      const fallbackDocs = DOCUMENT_SLOTS.find(s => s.key === pdfEditorState.documentType)?.fallbackField 
-          ? ensureArray(project?.[DOCUMENT_SLOTS.find(s => s.key === pdfEditorState.documentType).fallbackField]) 
-          : [];
-      const currentFiles = primaryDocs.length > 0 ? primaryDocs : fallbackDocs;
-      
-      const nextVersionIndex = currentFiles.length + 1; // If we edit the latest, we are adding a NEW version on top
-      
-      // 2. Construct new name
-      const newName = `${pdfEditorState.documentType}_v${nextVersionIndex}.${outputExt}`;
-
-      // Create File object from blob
-      const mimeType = isPdf ? 'application/pdf' : 'image/png';
-      const file = new File([blob], newName, { type: mimeType });
-
-      // Close editor and upload
-      setPdfEditorState({ isOpen: false, pdfUrl: null, documentType: null, isPdf: null, filename: null });
-
-      // Upload the new version
-      console.log(`Uploading annotated file: ${newName}, type: ${mimeType}, size: ${blob.size} bytes`);
-      await handleDocumentUpload(pdfEditorState.documentType, file);
-      
-    } catch (error) {
-      console.error('Failed to save annotated document:', error);
-      alert(`Failed to save annotated document: ${error.message || 'Unknown error'}`);
-    }
-  };
-
-  const handlePdfEditorCancel = () => {
-    setPdfEditorState({ isOpen: false, pdfUrl: null, documentType: null, isPdf: null, filename: null });
-  };
-
-  const initiatePhotoUpload = (slotKey, file) => {
-    if (!projectId || !file) return;
-    setPendingPhotoUpload({ slotKey, file });
-  };
-
-  const handleDateConfirm = async (dateString) => {
-    if (!pendingPhotoUpload) return;
-    const { file, slotKey } = pendingPhotoUpload;
-
-    // Format: name_M_D_YYYY.ext
-    // dateString is YYYY-MM-DD
-    const [year, month, day] = dateString.split("-");
-    const safeMonth = parseInt(month, 10);
-    const safeDay = parseInt(day, 10);
-
-    const originalName = file.name;
-    const lastDotIndex = originalName.lastIndexOf(".");
-    const namePart = lastDotIndex !== -1 ? originalName.slice(0, lastDotIndex) : originalName;
-    const extPart = lastDotIndex !== -1 ? originalName.slice(lastDotIndex) : "";
-    
-    // Construct new name
-    const newName = `${namePart}_${safeMonth}_${safeDay}_${year}${extPart}`;
-    
-    // Create new File object
-    const newFile = new File([file], newName, { type: file.type });
-
-    setPendingPhotoUpload(null); // Close modal
-    
-    // Proceed with upload
-    setPhotoUploadState({ key: slotKey, error: null });
-    try {
-      await apiService.uploadProjectDocument(projectId, slotKey, newFile);
-      await loadProjectDetails();
-      setPhotoUploadState({ key: null, error: null });
-    } catch (uploadErr) {
-      console.error("Failed to upload photo:", uploadErr);
-      setPhotoUploadState({
-        key: slotKey,
-        error: uploadErr?.message || "Failed to upload photo.",
-      });
-    }
-  };
-
-  const handleDateCancel = () => {
-    setPendingPhotoUpload(null);
-  };
+  // Shapefiles
+  const activeCarbonShapefiles = ensureArray(project?.activeCarbonShapefiles);
+  const shapefileSummary =
+    activeCarbonShapefiles.length > 0
+      ? `${activeCarbonShapefiles.length} file${activeCarbonShapefiles.length === 1 ? "" : "s"} available`
+      : "No shape files uploaded yet";
 
   const handleDownloadShapeFiles = () => {
-    if (!activeCarbonShapefiles.length) {
-      return;
-    }
+    if (!activeCarbonShapefiles.length) return;
     activeCarbonShapefiles.forEach((url) => {
       if (!url) return;
       const link = document.createElement("a");
@@ -845,9 +144,8 @@ const ProjectDetail = () => {
     });
   };
 
-  const projectDocuments = project?.documents || {};
-  const resolvedDocumentSlots = DOCUMENT_SLOTS.map((slot) => {
-    const primary = ensureArray(projectDocuments[slot.key]);
+  const resolvedDocumentSlots = useMemo(() => DOCUMENT_SLOTS.map((slot) => {
+    const primary = ensureArray(project?.documents?.[slot.key] || []);
     const fallback = slot.fallbackField
       ? ensureArray(project?.[slot.fallbackField])
       : [];
@@ -855,7 +153,22 @@ const ProjectDetail = () => {
       ...slot,
       files: primary.length > 0 ? primary : fallback,
     };
-  });
+  }), [project]);
+
+  // --- Display Fields Definitions ---
+
+  const primaryContactName = ensureText(
+    project?.ownerDisplayName || project?.ownerFirstName || project?.landowner
+  );
+  
+  // Wait until project is loaded to calculate these safely
+  const statusValueClass = project?.status === "Active"
+      ? "text-green-600 bg-green-50 border-green-200"
+      : project?.status === "Completed"
+      ? "text-blue-600 bg-blue-50 border-blue-200"
+      : "text-gray-700 bg-gray-100 border-gray-200";
+
+  // --- Render Loading/Error ---
 
   if (loading) {
     return (
@@ -888,11 +201,8 @@ const ProjectDetail = () => {
     return <div className="p-8 text-center">Project data not found.</div>;
   }
 
-  const primaryContactName = ensureText(
-    project.ownerDisplayName || project.ownerFirstName || project.landowner
-  );
-  const primaryContactPhone =
-    project.phone || project.contact?.phone || "";
+  // --- More Field Definitions (Safe now that project exists) ---
+  const primaryContactPhone = project.phone || project.contact?.phone || "";
   const sanitizedPhoneHref = primaryContactPhone
     ? `tel:${primaryContactPhone.replace(/[^+\d]/g, "")}`
     : undefined;
@@ -928,9 +238,7 @@ const ProjectDetail = () => {
     },
     {
       label: "Consultation Date",
-      value: project.consultationDate
-        ? formatDate(project.consultationDate)
-        : "",
+      value: project.consultationDate ? formatDate(project.consultationDate) : "",
       placeholder: "Not recorded",
     },
     {
@@ -958,12 +266,9 @@ const ProjectDetail = () => {
     },
   ];
 
-  const statusValueClass =
-    project.status === "Active"
-      ? "text-green-600 bg-green-50 border-green-200"
-      : project.status === "Completed"
-      ? "text-blue-600 bg-blue-50 border-blue-200"
-      : "text-gray-700 bg-gray-100 border-gray-200";
+  const hasQuizScores = quizScoreFields.some(
+    (field) => field.value && field.value !== "Not recorded"
+  );
 
   const statusFields = [
     {
@@ -1012,49 +317,7 @@ const ProjectDetail = () => {
     },
   ];
 
-  const hasQuizScores = quizScoreFields.some(
-    (field) => field.value && field.value !== "Not recorded"
-  );
-
-  const openLightbox = (url) => {
-    if (url) {
-      setLightboxImage(url);
-    }
-  };
-
-  const closeLightbox = () => setLightboxImage(null);
-
-  const timelinePhases = [
-    {
-      title: "June — August",
-      points: [
-        "On-site consultations with TreeFolks' experts & create draft maps",
-        'Establish "Grow Zones" in planting areas',
-        "Fence out livestock from grow zones",
-      ],
-    },
-    {
-      title: "September — November",
-      points: [
-        "Ideal time for seeding wildflowers & native grasses",
-        "Mark planting areas & finalize maps",
-      ],
-    },
-    {
-      title: "December — February",
-      points: [
-        "Trees are planted by contractors or volunteers",
-      ],
-    },
-    {
-      title: "March — May",
-      points: [
-        "Carbon+ Credit docs filed w/ county clerks",
-        "Landowners submit photo points annually",
-      ],
-    },
-  ];
-
+  // ==================== Render ====================
   return (
     <div className="bg-gray-50">
       {isAdmin && (
@@ -1076,7 +339,17 @@ const ProjectDetail = () => {
       </div>
       )}
 
+      {/* Landowner Project Selector */}
+      {!isAdmin && landownerProjects.length > 1 && (
+        <ProjectSelector 
+            projects={landownerProjects}
+            currentProjectId={projectId}
+            onSelectProject={handleSelectProject}
+        />
+      )}
+
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 space-y-10">
+        
         {error && (
           <div className="mb-4 flex items-center justify-center rounded-lg bg-red-100 p-3 text-center text-red-500 shadow-sm">
             <AlertCircle className="mr-2 h-5 w-5 flex-shrink-0" />
@@ -1123,7 +396,7 @@ const ProjectDetail = () => {
                 />
               </div>
               {photoUploadState.error &&
-                ["plantingPhotoUrls", "beforePhotoUrls"].includes(photoUploadState.key) && (
+                ["plantingPhotoUrls", "beforePhotoUrls"].includes(photoUploadState.errorSlot) && (
                   <p className="text-xs text-red-600">{photoUploadState.error}</p>
                 )}
             </div>
@@ -1158,7 +431,7 @@ const ProjectDetail = () => {
                   isUploading={photoUploadState.key === "propertyImageUrls"}
                 />
               </div>
-              {photoUploadState.error && photoUploadState.key === "propertyImageUrls" && (
+              {photoUploadState.error && photoUploadState.errorSlot === "propertyImageUrls" && (
                 <p className="text-xs text-red-600">{photoUploadState.error}</p>
               )}
             </div>
@@ -1301,7 +574,7 @@ const ProjectDetail = () => {
             Seasonal timeline to help landowners prep for each stage.
           </p>
           <div className="mt-6 grid gap-6 md:grid-cols-2">
-            {timelinePhases.map((phase) => (
+            {TIMELINE_PHASES.map((phase) => (
               <div
                 key={phase.title}
                 className="rounded-xl bg-green-50/50 p-5 border border-green-100"
@@ -1340,13 +613,14 @@ const ProjectDetail = () => {
                 slot={slot}
                 files={slot.files}
                 onUpload={handleDocumentUpload}
+                onUploadWithComment={handleDraftMapUploadWithComment}
                 onDelete={handleDocumentDelete}
                 onEdit={handleDocumentEdit}
                 isUploading={docUploadState.key === slot.key}
                 isDeleting={docDeleteState.key === slot.key}
                 isAdmin={isAdmin}
                 comments={slot.key === 'draftMap' ? project?.draftMapComments : null}
-                onAddComment={() => setIsCommentModalOpen(true)}
+                onAddComment={openStandaloneCommentModal}
               />
             ))}
           </div>
@@ -1424,12 +698,13 @@ const ProjectDetail = () => {
         </div>
       </div>
 
-      {/* Modals */}
       <DraftMapCommentModal 
         isOpen={isCommentModalOpen}
-        onClose={() => setIsCommentModalOpen(false)}
+        onClose={handleCommentModalClose}
         onSubmit={handleAddComment}
         isSubmitting={isSubmittingComment}
+        mode={commentModalMode}
+        fileName={pendingDraftMapUpload?.name}
       />
 
       <DateSelectionModal
@@ -1465,12 +740,13 @@ const ProjectDetail = () => {
       )}
 
       {/* PDF Editor Modal */}
-      {pdfEditorState.isOpen && pdfEditorState.pdfUrl && (
+      {pdfEditorState.isOpen && (
         <PdfEditor
           pdfUrl={pdfEditorState.pdfUrl}
           isPdf={pdfEditorState.isPdf}
           onSave={handlePdfEditorSave}
           onCancel={handlePdfEditorCancel}
+          requireComment={!isAdmin && pdfEditorState.documentType === 'draftMap'}
         />
       )}
     </div>

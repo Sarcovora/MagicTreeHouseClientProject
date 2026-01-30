@@ -15,11 +15,11 @@ const ProjectCard = ({ project }) => {
         <h3 className="font-medium text-lg text-gray-900">{displayName}</h3>
 
         <div className="flex flex-col gap-1 text-sm text-gray-500">
-          {project.siteNumber !== undefined && (
-            <div className="font-medium text-gray-700">
-              Site #{project.siteNumber}
-            </div>
-          )}
+          <div className="font-medium text-gray-700">
+            {project.siteNumber !== undefined && project.siteNumber !== null && project.siteNumber !== ""
+              ? `Site #${project.siteNumber}` 
+              : "Site Number Not Found"}
+          </div>
           <div className="flex items-start">
              <MapPin className="w-4 h-4 mr-2 mt-0.5 shrink-0" />
              <span>

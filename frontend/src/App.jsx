@@ -11,8 +11,6 @@ import Forms from "./pages/Forms";
 import FormDetail from "./features/admin/pages/FormDetail";
 import LandownerLayout from "./features/landowner/layouts/LandownerLayout";
 import LandownerDashboard from "./features/landowner/pages/LandownerDashboard";
-import AddProject from "./features/admin/pages/AddProject";
-import EditProject from './features/admin/pages/EditProject';
 import ProtectedRoute from "./features/auth/ProtectedRoute";
 import LoginPage from "./features/auth/pages/LoginPage";
 import AccountPage from "./features/auth/pages/AccountPage";
@@ -42,8 +40,6 @@ function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="seasons/:seasonYear" element={<SeasonProjectList />} />
           <Route path="project/:id" element={<ProjectDetail />} />
-          <Route path="project/:id/edit" element={<EditProject />} />
-          <Route path="add-project" element={<AddProject />} />
           <Route path="map" element={<Map />} />
           <Route path="gallery" element={<PhotoGallery />} />
           <Route path="forms" element={<Forms />} />

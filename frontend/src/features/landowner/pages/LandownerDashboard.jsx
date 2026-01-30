@@ -2,32 +2,49 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import apiService from "../../../services/apiService";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "../../auth/AuthProvider";
 
 const LandownerDashboard = () => {
   const navigate = useNavigate();
   const [error, setError] = useState(null);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    const fetchMyProject = async () => {
+    // Don't fetch until auth is ready
+    if (authLoading) {
+      return;
+    }
+
+    // If no user after auth loading is done, they'll be redirected by ProtectedRoute
+    if (!user) {
+      return;
+    }
+
+    const fetchMyProjects = async () => {
       try {
-        const project = await apiService.getLandownerProject();
-        if (project && project.id) {
-          navigate(`/landowner/project/${project.id}`, { replace: true });
+        // Fetch all projects for the landowner
+        const projects = await apiService.getLandownerProjects();
+        
+        if (projects && projects.length > 0) {
+          // Redirect to the first project
+          // The ProjectDetail page will handle fetching the full list again for the selector
+          // to ensure deep linking to any project works correctly.
+          navigate(`/landowner/project/${projects[0].id}`, { replace: true });
         } else {
-          setError("No project associated with your account.");
+          setError("No projects associated with your account.");
         }
       } catch (err) {
-        console.error("Failed to fetch landowner project:", err);
+        console.error("Failed to fetch landowner projects:", err);
          if (err.response?.status === 404) {
-             setError("We couldn't find a project linked to your email address.");
+             setError("We couldn't find any projects linked to your email address.");
          } else {
-             setError("Unable to load your project. Please try again later.");
+             setError("Unable to load your projects. Please try again later.");
          }
       }
     };
 
-    fetchMyProject();
-  }, [navigate]);
+    fetchMyProjects();
+  }, [navigate, user, authLoading]);
 
   if (error) {
     return (
