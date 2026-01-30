@@ -14,6 +14,7 @@
 8. [External Services - Complete Guide](#external-services---complete-guide)
 9. [Common Patterns](#common-patterns)
 10. [Troubleshooting](#troubleshooting)
+11. [Tips for AI-Assisted Development](#tips-for-ai-assisted-development)
 
 ---
 
@@ -239,15 +240,13 @@ frontend/
 │                                         │  (projectService, etc.)      │   │
 │                                         └─────────────────────────────┘   │
 │                                                      │                     │
-└──────────────────────────────────────────────────────│─────────────────────┘
-                                                       │
-                                                       ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              BACKEND (Express + Node.js)                     │
-│                              http://localhost:3000/api                       │
-├──────────────────────────────────────────────────────────────────────────────┤
-│               Routes → Controllers → Services → Airtable/Cloudinary          │
-└──────────────────────────────────────────────────────────────────────────────┘
+│                                                      ▼                     │
+│   ┌──────────────────────────────────────────────────────────────────────────────┐
+│   │                              BACKEND (Express + Node.js)                     │
+│   │                              http://localhost:3000/api                       │
+│   ├──────────────────────────────────────────────────────────────────────────────┤
+│   │               Routes → Controllers → Services → Airtable/Cloudinary          │
+│   └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **The Flow:**
@@ -347,6 +346,20 @@ function MyComponent() {
   return <LandownerView />;
 }
 ```
+
+#### Creating Admin Users
+
+By default, new users are NOT admins. There are two ways to make someone an admin:
+
+**Method 1: via Code (Recommended for Devs)**
+1. Open `frontend/src/firebase.js`
+2. Add the user's UID to the `ADMIN_UIDS` array
+3. When they log in next, their profile will automatically be updated to `isAdmin: true`
+
+**Method 2: via Firestore Console (Manual)**
+1. Go to Firestore in Firebase Console
+2. Find collection `users` → document with user's UID
+3. Add or edit field: `isAdmin: true` (boolean)
 
 ---
 
@@ -601,51 +614,17 @@ service cloud.firestore {
 
 #### Creating Admin Users
 
-By default, new users are NOT admins. To make someone an admin:
+By default, new users are NOT admins. There are two ways to make someone an admin:
 
+**Method 1: via Code (Recommended for Devs)**
+1. Open `frontend/src/firebase.js`
+2. Add the user's UID to the `ADMIN_UIDS` array
+3. When they log in next, their profile will automatically be updated to `isAdmin: true`
+
+**Method 2: via Firestore Console (Manual)**
 1. Go to Firestore in Firebase Console
 2. Find collection `users` → document with user's UID
 3. Add or edit field: `isAdmin: true` (boolean)
-
----
-
-### Service Communication Summary
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         HOW EVERYTHING CONNECTS                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   ┌─────────────────────────────────────────────────────────────────────┐  │
-│   │                    FRONTEND (React)                                  │  │
-│   │                                                                      │  │
-│   │   FirebaseAuth ◄──────────────────┐                                  │  │
-│   │   (login/logout)                  │                                  │  │
-│   │         │                         │                                  │  │
-│   │         │ JWT Token               │ User Profile                     │  │
-│   │         ▼                         │                                  │  │
-│   │   API Requests ──────────────┐    │                                  │  │
-│   │   (with token in header)     │    │                                  │  │
-│   └──────────────────────────────│────│──────────────────────────────────┘  │
-│                                  │    │                                     │
-│   ┌──────────────────────────────▼────▼──────────────────────────────────┐  │
-│   │                    BACKEND (Express)                                 │  │
-│   │                                                                      │  │
-│   │   ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐   │  │
-│   │   │ Firebase Admin  │   │ Airtable SDK    │   │ Cloudinary SDK  │   │  │
-│   │   │ (verify tokens  │   │ (read/write     │   │ (upload files,  │   │  │
-│   │   │  get profiles)  │   │  project data)  │   │  get URLs)      │   │  │
-│   │   └────────│────────┘   └────────│────────┘   └────────│────────┘   │  │
-│   └────────────│─────────────────────│─────────────────────│────────────┘  │
-│                │                     │                     │                │
-│                ▼                     ▼                     ▼                │
-│   ┌─────────────────┐   ┌─────────────────────┐   ┌─────────────────┐      │
-│   │    Firestore    │   │      Airtable       │   │   Cloudinary    │      │
-│   │  (user docs)    │   │  (project records)  │   │ (temp file host)│      │
-│   └─────────────────┘   └─────────────────────┘   └─────────────────┘      │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
 
 ---
 
@@ -757,3 +736,13 @@ npm run lint         # Run ESLint to find code issues
 | **Lucide React** | Icon library |
 | **react-pdf** | PDF viewing |
 | **PDF-lib** | PDF editing/annotation |
+
+---
+
+## Tips for AI-Assisted Development
+
+This codebase is 99% AI-generated. To maintain velocity and code quality, we recommend:
+
+1.  **Use AI-First IDEs**: Use tools like [Cursor](https://cursor.sh) or Google's Antigravity agentic workflow. They understand the context better than standard copilot plugins.
+2.  **Save Frequently**: AI can make mistakes. Commit your working state to Git often. If an AI change breaks something, it's easier to revert to the last working commit than to debug the AI's mess.
+3.  **Review AI Changes**: Even "perfect" AI code can introduce subtle bugs or hallucinate imports. Always review the diffs.
