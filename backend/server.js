@@ -2,34 +2,47 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-const airtableRoutes = require('./routes/airtableRoutes'); // We'll create this next
+// const fs = require('fs'); // Not needed for serverless
+// const path = require('path'); // Not needed for serverless
+const airtableRoutes = require('./routes/airtableRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000; // Use environment port or default
 
 // --- Uploads directory ---
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
+// Note: On Vercel, file system writes don't work. Use Cloudinary for file uploads.
+// const uploadsDir = path.join(__dirname, 'uploads');
+// if (!fs.existsSync(uploadsDir)) {
+//     fs.mkdirSync(uploadsDir, { recursive: true });
+// }
 
 // --- Middleware ---
 const corsOptions = {
-    origin: [
-        'http://localhost:5173',
-        'http://localhost:3000',
-        'https://treehouse-frontend.vercel.app'
-    ],
+    origin: function (origin, callback) {
+        const allowedOrigins = [
+            'http://localhost:5173',
+            'http://localhost:3000',
+            'https://treehouse-frontend.vercel.app'
+        ];
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log('Blocked by CORS:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions)); // Allow requests from different origins (like your frontend)
+app.options('*', cors(corsOptions)); // Handle preflight requests
 app.use(express.json({ limit: '50mb' })); // Parse incoming JSON requests (larger limit for base64 encoded images)
 app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Parse URL-encoded requests
-app.use('/uploads', express.static(uploadsDir));
+// app.use('/uploads', express.static(uploadsDir)); // Disabled for serverless - use Cloudinary instead
 
 // --- Cache Control Middleware ---
 app.use((req, res, next) => {
@@ -64,20 +77,26 @@ app.use((err, req, res, next) => {
     });
 });
 
-// --- Start Server ---
-const server = app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-    if (!process.env.AIRTABLE_PAT || !process.env.AIRTABLE_BASE_ID || !process.env.AIRTABLE_TABLE_ID) {
-        console.warn('WARN: Airtable environment variables (PAT, BASE_ID, TABLE_ID) are not fully set. API calls might fail.');
-    }
-});
+// --- Start Server (for local development only) ---
+// In Vercel, we export the app instead of listening
+if (process.env.NODE_ENV !== 'production') {
+    const server = app.listen(PORT, () => {
+        console.log(`Server listening on port ${PORT}`);
+        if (!process.env.AIRTABLE_PAT || !process.env.AIRTABLE_BASE_ID || !process.env.AIRTABLE_TABLE_ID) {
+            console.warn('WARN: Airtable environment variables (PAT, BASE_ID, TABLE_ID) are not fully set. API calls might fail.');
+        }
+    });
 
-server.on('close', () => {
-    console.log('Server Connection Closed');
-});
+    server.on('close', () => {
+        console.log('Server Connection Closed');
+    });
 
-process.on('SIGTERM', () => {
-    console.log('Received SIGTERM');
-    process.exit(0);
-});
+    process.on('SIGTERM', () => {
+        console.log('Received SIGTERM');
+        process.exit(0);
+    });
+}
+
+// Export for Vercel serverless
+module.exports = app;
 
