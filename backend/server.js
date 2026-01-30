@@ -16,7 +16,17 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // --- Middleware ---
-app.use(cors()); // Allow requests from different origins (like your frontend)
+const corsOptions = {
+    origin: [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'https://treehouse-frontend.vercel.app'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions)); // Allow requests from different origins (like your frontend)
 app.use(express.json({ limit: '50mb' })); // Parse incoming JSON requests (larger limit for base64 encoded images)
 app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Parse URL-encoded requests
 app.use('/uploads', express.static(uploadsDir));
