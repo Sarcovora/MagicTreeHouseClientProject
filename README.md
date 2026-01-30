@@ -1,8 +1,8 @@
-# Magic Tree House
+# TreeFolks User Portal
 
 A full-stack application for tracking tree planting projects with Airtable integration.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Backend
 ```bash
@@ -20,10 +20,10 @@ npm run dev
 # Runs on http://localhost:5173
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-MagicTreeHouseClientProject/
+root/
 ├── backend/               # Node.js + Express API server
 ├── frontend/              # React + Vite application
 ├── documentation/         # All project documentation

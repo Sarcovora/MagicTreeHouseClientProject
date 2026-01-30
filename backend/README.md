@@ -1,4 +1,4 @@
-# Magic Tree House - Backend
+# TreeFolks User Portal - Backend
 
 **Complete Documentation:** [Backend Architecture Guide](../documentation/BACKEND_ARCHITECTURE.md)
 

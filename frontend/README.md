@@ -1,8 +1,6 @@
-# Magic Tree House - Frontend
+# TreeFolks User Portal - Frontend
 
-React + Vite frontend for the Magic Tree House tree planting project tracker.
-
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # Install dependencies
@@ -15,7 +13,7 @@ npm run dev
 npm run build
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 frontend/
@@ -30,7 +28,7 @@ frontend/
 └── README.md                       # This file
 ```
 
-## 🔧 API Service
+## API Service
 
 ### Current API Service
 
@@ -46,7 +44,7 @@ const projects = await apiService.getProjectsBySeason('24-25');
 
 > **Heads-up:** Older helper files (`magicTreeHouseAPI`, `actualApiService`, example hooks, etc.) have been removed because they were unused and causing confusion. If you still have local imports referencing them, switch to the functions exported from `apiService.js`.
 
-## 🖼️ Property Images
+## Property Images
 
 Projects can have multiple property images. Once `apiService.getProjectDetails(recordId)` is wired to the backend it will return a `propertyImageUrls` array you can render:
 
@@ -71,12 +69,12 @@ function PropertyGallery({ recordId }) {
 }
 ```
 
-## 📖 Documentation
+## Documentation
 
 - **[Frontend API Guide](../documentation/FRONTEND_API_GUIDE.md)** - Complete guide with examples
 - **[Backend API Docs](../documentation/API_DOCUMENTATION.md)** - Backend API reference
 
-## ⚙️ Configuration
+## Configuration
 
 Create a `.env` file for environment variables:
 
@@ -88,7 +86,7 @@ VITE_API_BASE_URL=http://localhost:3000/api
 # VITE_API_BASE_URL=https://your-backend.vercel.app/api
 ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Framework**: React 18
 - **Build Tool**: Vite
@@ -96,7 +94,7 @@ VITE_API_BASE_URL=http://localhost:3000/api
 - **State Management**: React Hooks
 - **Styling**: (your choice)
 
-## 📝 Available Scripts
+## Available Scripts
 
 ```bash
 npm run dev          # Start dev server (http://localhost:5173)
@@ -105,7 +103,7 @@ npm run preview      # Preview production build
 npm run lint         # Run ESLint
 ```
 
-## 🔗 Useful Links
+## Useful Links
 
 - [React Documentation](https://react.dev/)
 - [Vite Documentation](https://vitejs.dev/)

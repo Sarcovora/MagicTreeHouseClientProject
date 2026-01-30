@@ -1,4 +1,4 @@
-# Magic Tree House - Backend Architecture Guide
+# Backend Architecture Guide
 
 ## Architecture Patterns
 
