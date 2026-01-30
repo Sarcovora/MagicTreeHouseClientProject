@@ -20,6 +20,16 @@ const initialSignupState = {
   confirmPassword: "",
 };
 
+/**
+ * LoginPage - User authentication page
+ * 
+ * Handles:
+ * - User login (email/password)
+ * - User registration (signup)
+ * - Redirects based on user role (admin vs landowner)
+ * 
+ * @component
+ */
 const LoginPage = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();

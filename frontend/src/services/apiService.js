@@ -3,9 +3,10 @@
 /**
  * Main API Service Entry Point
  * 
- * This file aggregates all sub-services for backward compatibility.
- * Ideally, components should import directly from the specific service files
- * in the future (e.g., import { getSeasons } from './seasonService').
+ * Aggregates all sub-services (project, season, document, landowner) for backward compatibility
+ * and easy import.
+ * 
+ * @module apiService
  */
 
 import * as projectService from './projectService';

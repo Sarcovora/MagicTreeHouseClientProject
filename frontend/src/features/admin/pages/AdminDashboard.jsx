@@ -30,7 +30,6 @@ const AdminDashboard = () => {
   const [error, setError] = useState(null);
 
   // --- Data Fetching ---
-
   /**
    * Loads and aggregates dashboard data.
    * Fetches seasons, then fetches projects for each season to calculate counts.
@@ -84,7 +83,6 @@ const AdminDashboard = () => {
     loadDashboardData();
   }, [loadDashboardData]);
 
-  // --- Computed Values ---
 
   // Filter seasons based on search input
   const filteredSeasons = seasons.filter((season) => {
@@ -94,8 +92,6 @@ const AdminDashboard = () => {
     }
     return season.year.toLowerCase().includes(lowerSearch);
   });
-
-  // --- Render Helpers ---
 
   const renderContent = () => {
     if (loading) {

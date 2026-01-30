@@ -23,6 +23,18 @@ export const getCachedProject = (projectId) => {
 
 // --- Normalization ---
 
+/**
+ * Normalizes a raw project record from the backend into a standardized format for the frontend.
+ * 
+ * Handles:
+ * - Field mapping (backend -> frontend)
+ * - Default value assignment
+ * - Data transformation (e.g., ensuring arrays, formatting metrics)
+ * 
+ * @param {object} record - Raw project record from API
+ * @param {object} context - Additional context (e.g., { seasonYear })
+ * @returns {object} Normalized project object
+ */
 export const normalizeProjectRecord = (record = {}, { seasonYear } = {}) => {
   const computedSeasonYear = record.seasonYear ?? record.season ?? seasonYear ?? '';
 
@@ -129,6 +141,12 @@ export const normalizeProjectRecord = (record = {}, { seasonYear } = {}) => {
 
 // --- File Utils ---
 
+/**
+ * Converts a File object to a Base64 string.
+ * 
+ * @param {File} file - The file to convert
+ * @returns {Promise<string>} Base64 string of the file content
+ */
 export const fileToBase64 = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();

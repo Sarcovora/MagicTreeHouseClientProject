@@ -4,6 +4,16 @@ import { db } from "../../../firebase";
 import { useAuth } from "../AuthProvider";
 import { useNavigate } from "react-router-dom";
 
+/**
+ * AccountPage - User account management page
+ * 
+ * Allows users (landowners and admins) to:
+ * - View their profile details (username, email, role)
+ * - Update their username
+ * - Sign out
+ * 
+ * @component
+ */
 const AccountPage = () => {
   const { user, profile, isAdmin, signOut, updateProfileState } = useAuth();
   const navigate = useNavigate();
