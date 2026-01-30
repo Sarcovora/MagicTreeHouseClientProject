@@ -1,9 +1,24 @@
-// src/pages/Map.jsx
+/**
+ * Map Page Component
+ * 
+ * Displays an interactive map gallery for the property.
+ * Features:
+ * - List of available maps fetched from the backend
+ * - Interactive map viewer with zoom/pan capabilities (future) and comment markers
+ * - Commenting system allowing users to click on the map to add notes
+ * - Search functionality to filter maps by title/description
+ * - Responsive layout with a sidebar list and main viewer area
+ */
+
 import { useState, useEffect, useRef } from "react";
 import { MapPin, Image, Plus, Search, MessageCircle, AlertCircle, X } from "lucide-react";
 import apiService from "../services/apiService";
 import { Link } from "react-router-dom";
 
+/**
+ * Main Map Component
+ * @returns {JSX.Element} The rendered Map page
+ */
 const Map = () => {
   const [selectedMap, setSelectedMap] = useState(null);
   const [maps, setMaps] = useState([]);
@@ -19,7 +34,12 @@ const Map = () => {
   const [newCommentText, setNewCommentText] = useState("");
   const mapImageRef = useRef(null);
 
-  // Fetch maps on component mount
+  // --- Data Fetching ---
+
+  /**
+   * Fetch maps on component mount.
+   * Handles loading states and error management.
+   */
   useEffect(() => {
     const fetchMaps = async () => {
       setLoading(true); // Start loading indicator
@@ -32,7 +52,7 @@ const Map = () => {
         setMaps(mapDocs || []);
 
         if (mapDocs && mapDocs.length > 0) {
-          // Automatically select the first map
+          // Automatically select the first map if available
           handleMapSelect(mapDocs[0]); // This will trigger image loading
         }
         // *** Set loading to false AFTER attempting to fetch and process maps ***
@@ -50,7 +70,10 @@ const Map = () => {
     fetchMaps();
   }, []); // Run once on mount
 
-  // Load comments for a specific map
+  /**
+   * Load comments for a specific map.
+   * @param {string} mapId - The ID of the map to fetch comments for
+   */
   const loadCommentsForMap = async (mapId) => {
     if (!mapId) return;
     setLoadingComments(true);
@@ -67,7 +90,13 @@ const Map = () => {
     }
   };
 
-  // Handle map selection from the list
+  // --- Interaction Handlers ---
+
+  /**
+   * Handle map selection from the list.
+   * Updates state and triggers comment loading for the selected map.
+   * @param {Object} map - The map object selected
+   */
   const handleMapSelect = (map) => {
     if (!map || map.id === selectedMap?.id) return; // Prevent re-selecting same map unnecessarily
     setImageLoading(true); // Start loading indicator for the specific map image
@@ -76,7 +105,11 @@ const Map = () => {
     loadCommentsForMap(map.id); // Fetch comments for the new map
   };
 
-  // Handle map click for adding comments
+  /**
+   * Handle clicks on the map image to place a new comment.
+   * Calculates relative coordinates (%) for the marker position.
+   * @param {React.MouseEvent} e - The mouse click event
+   */
   const handleMapClick = (e) => {
     if (!selectedMap || imageLoading || !mapImageRef.current) return;
     const rect = mapImageRef.current.getBoundingClientRect();
@@ -87,7 +120,10 @@ const Map = () => {
     setShowCommentModal(true);
   };
 
-  // Handle submitting a new comment
+  /**
+   * Submit a new comment to the backend.
+   * Updates the local comment list upon success.
+   */
   const handleAddComment = async () => {
      if (!newCommentText.trim() || !selectedMap) return;
      const commentData = { x: newCommentPosition.x, y: newCommentPosition.y, text: newCommentText, author: "Current User" }; // Placeholder author
@@ -98,6 +134,8 @@ const Map = () => {
          setNewCommentText("");
      } catch (error) { console.error("Error adding comment:", error); alert("Failed to add comment. Please try again."); }
   };
+
+  // --- Image Handling ---
 
   // Handle image load event for the selected map
   const handleImageLoad = () => {
@@ -111,7 +149,9 @@ const Map = () => {
     setImageLoading(false);
   };
 
-  // Format date
+  // --- Utilities ---
+
+  // Format date helper
   const formatDate = (timestamp) => { /* ... (same as before) ... */
     if (!timestamp) return "";
     try {

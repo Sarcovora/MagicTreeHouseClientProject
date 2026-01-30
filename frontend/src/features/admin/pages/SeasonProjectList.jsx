@@ -1,4 +1,15 @@
-// src/features/admin/pages/SeasonProjectList.jsx
+/**
+ * SeasonProjectList Page
+ *
+ * Displays a list of projects associated with a specific season (year).
+ *
+ * Features:
+ * - Fetches projects for the selected season from the backend
+ * - Provides client-side searching/filtering of projects
+ * - Handles navigation back to the dashboard
+ * - Manages loading and error states for project fetching
+ */
+
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'; // Ensure Link is imported
 import { ArrowLeft, FolderOpen, Plus, AlertCircle } from 'lucide-react';
@@ -6,26 +17,43 @@ import apiService from '../../../services/apiService';
 import ProjectCard from '../components/ProjectCard';
 import SearchBar from '../../../components/ui/SearchBar';
 
+/**
+ * Main SeasonProjectList Component
+ * @returns {JSX.Element} The rendered list of projects for a season
+ */
 const SeasonProjectList = () => {
+  // --- Helpers ---
   const normalizeSeasonKey = (value) =>
     String(value ?? "").trim();
 
+  // --- Router Hooks & Param Processing ---
   const { seasonYear } = useParams();
   const normalizedSeasonYear = normalizeSeasonKey(seasonYear);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Parse expected count from navigation state (if available) for validation
   const rawExpectedCount = location.state?.expectedProjectCount;
   const expectedProjectCount = Number.isFinite(Number(rawExpectedCount))
     ? Number(rawExpectedCount)
     : null;
+
+  // --- State ---
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // --- Effects ---
+
+  /**
+   * Fetch projects when the seasonYear changes.
+   * Handles cache validation using expectedProjectCount to potentially force a refresh.
+   */
   useEffect(() => {
     // console.log(`[SeasonProjectList - Restored] useEffect triggered. Season: ${seasonYear}`);
     const fetchProjects = async () => {
+      // Validate season year
       if (!normalizedSeasonYear) {
         console.error("[SeasonProjectList - Restored] Season year is undefined or invalid in params.");
         setError("Season year not specified in URL.");
@@ -41,6 +69,8 @@ const SeasonProjectList = () => {
         let seasonProjects = await apiService.getProjectsBySeason(normalizedSeasonYear);
         console.log(`[SeasonProjectList - Restored] API returned ${seasonProjects?.length ?? 0} projects for ${normalizedSeasonYear}.`);
 
+        // Cache Validation Logic:
+        // If we expect projects (from dashboard count) but get 0, assume stale cache and force refresh.
         const expectedCount = typeof expectedProjectCount === 'number' ? expectedProjectCount : null;
         if (
           expectedCount !== null &&
@@ -70,6 +100,12 @@ const SeasonProjectList = () => {
     fetchProjects();
   }, [normalizedSeasonYear, expectedProjectCount]);
 
+  // --- Computed Values ---
+
+  /**
+   * Filter projects based on the search term.
+   * Checks multiple fields: name, address, landowner, location, zip, site number.
+   */
   const searchValue = searchTerm.toLowerCase();
   const filteredProjects = projects.filter((project) => {
     const nameCandidate =
@@ -94,6 +130,11 @@ const SeasonProjectList = () => {
     );
   });
 
+  // --- Render Helpers ---
+
+  /**
+   * Renders the main content area based on state (loading, error, empty, or list).
+   */
   const renderContent = () => {
     console.log(`[SeasonProjectList - Restored] renderContent called. Loading: ${loading}, Error: ${!!error}, Projects Found: ${projects.length}, Filtered Count: ${filteredProjects.length}`);
     if (loading) {

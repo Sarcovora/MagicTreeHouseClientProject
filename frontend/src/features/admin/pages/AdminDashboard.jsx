@@ -1,4 +1,15 @@
-// src/features/admin/pages/AdminDashboard.jsx
+/**
+ * AdminDashboard Page
+ *
+ * The main landing page for the admin interface.
+ * Displays a dashboard of reforestation seasons and their project counts.
+ *
+ * Features:
+ * - Fetches and aggregates project data by season
+ * - Displays seasons in a grid of cards
+ * - Provides search functionality to filter seasons by year
+ */
+
 import { useState, useEffect, useCallback } from "react";
 
 import SeasonCard from "../components/SeasonCard";
@@ -7,16 +18,28 @@ import SearchBar from "../../../components/ui/SearchBar";
 import apiService from "../../../services/apiService";
 import { AlertCircle } from "lucide-react";
 
+/**
+ * Main AdminDashboard Component
+ * @returns {JSX.Element} The rendered dashboard
+ */
 const AdminDashboard = () => {
+  // --- State ---
   const [searchTerm, setSearchTerm] = useState("");
   const [seasons, setSeasons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // --- Data Fetching ---
+
+  /**
+   * Loads and aggregates dashboard data.
+   * Fetches seasons, then fetches projects for each season to calculate counts.
+   */
   const loadDashboardData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      // 1. Get list of season years
       const seasonYears = await apiService.getSeasons();
       const uniqueSeasonYears = [...new Set(seasonYears)].filter(Boolean);
 
@@ -25,6 +48,8 @@ const AdminDashboard = () => {
         return;
       }
 
+      // 2. Fetch projects for each season to get counts
+      // Note: This could be optimized by a backend endpoint that returns counts directly
       const seasonProjects = await Promise.all(
         uniqueSeasonYears.map(async (year) => {
           const projectsForSeason = await apiService.getProjectsBySeason(year);
@@ -35,6 +60,7 @@ const AdminDashboard = () => {
         })
       );
 
+      // 3. Normalize and sort data (newest year first)
       const normalizedSeasons = seasonProjects
         .map(({ year, projects }) => ({
           id: year,
@@ -53,9 +79,14 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  // Initial data load
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
+
+  // --- Computed Values ---
+
+  // Filter seasons based on search input
   const filteredSeasons = seasons.filter((season) => {
     const lowerSearch = searchTerm.trim().toLowerCase();
     if (!lowerSearch) {
@@ -63,6 +94,8 @@ const AdminDashboard = () => {
     }
     return season.year.toLowerCase().includes(lowerSearch);
   });
+
+  // --- Render Helpers ---
 
   const renderContent = () => {
     if (loading) {
@@ -114,6 +147,7 @@ const AdminDashboard = () => {
 
   return (
     <>
+      {/* Header & Search */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center">
           <div className="mb-4 sm:mb-0">
@@ -130,6 +164,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      {/* Main Content */}
       {renderContent()}
 
     </>
