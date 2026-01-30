@@ -33,7 +33,15 @@ CLOUDINARY_URL=cloudinary://key:secret@cloud_name
 PORT=3000
 ```
 
-**Where to get credentials:** [Architecture Guide - Environment Variables](../documentation/BACKEND_ARCHITECTURE.md#environment-variables)
+**Getting Airtable IDs:**
+
+1. **Base ID & Table ID**: From your table URL: `https://airtable.com/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_ID}/`
+
+2. **Season Field ID**: Run this in your terminal:
+   ```bash
+   cd backend
+   node -e "require('dotenv').config(); const axios = require('axios'); axios.get(\`https://api.airtable.com/v0/meta/bases/\${process.env.AIRTABLE_BASE_ID}/tables\`, {headers: {Authorization: \`Bearer \${process.env.AIRTABLE_PAT}\`}}).then(r => {const t = r.data.tables.find(t => t.id === process.env.AIRTABLE_TABLE_ID); const f = t.fields.find(f => f.name === 'Season'); console.log('Season Field ID:', f.id);})"
+   ```
 
 ---
 
