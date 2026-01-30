@@ -2,6 +2,14 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { MapPin } from "lucide-react";
 
+/**
+ * ProjectCard - Displays a summary of a project
+ * 
+ * Shows site number, address, and owner with a link to the detailed view.
+ * 
+ * @param {object} props
+ * @param {object} props.project - Project data object
+ */
 const ProjectCard = ({ project }) => {
   const displayName =
     project.ownerDisplayName ||

@@ -1,5 +1,18 @@
+// src/components/common/DateSelectionModal.jsx
 import React, { useState, useEffect } from 'react';
 
+/**
+ * DateSelectionModal - Modal dialog for selecting a date
+ * 
+ * Typically used when uploading files that need an associated date (e.g., photos with "date taken" metadata).
+ * Resets the date input when opened and validates before submission.
+ * 
+ * @param {object} props
+ * @param {boolean} props.isOpen - Whether the modal is visible
+ * @param {function} props.onClose - Callback when user cancels/closes
+ * @param {function} props.onConfirm - Callback(dateString) when user submits a valid date
+ * @param {string} props.displayName - Name of the file/item being dated (shown in the modal)
+ */
 const DateSelectionModal = ({ isOpen, onClose, onConfirm, displayName }) => {
   const [date, setDate] = useState("");
 

@@ -798,6 +798,7 @@ const attachDocumentToProject = async (recordId, documentType, attachment) => {
             documentType === 'plantingPhotoUrls' ||
             documentType === 'beforePhotoUrls' ||
             documentType === 'propertyImageUrls' ||
+            documentType === 'finalMap' || // Allow multiple Final Maps
             documentType === 'draftMap'; // Enable versioning for Draft Map PDFs
 
         let existingAttachments = [];
@@ -934,6 +935,132 @@ const detachDocumentFromProject = async (recordId, documentType) => {
 };
 
 
+/**
+ * Replaces a specific document at a given index within a document array field.
+ * Used for individual file replacement in multi-file slots like Final Map.
+ * 
+ * @param {string} recordId - Airtable record ID
+ * @param {string} documentType - Document type key (e.g., 'finalMap')
+ * @param {number} index - Index of file to replace (0-based)
+ * @param {object} attachment - New attachment { url, filename, contentType }
+ * @returns {object} - Processed updated project record
+ */
+const replaceDocumentAtIndex = async (recordId, documentType, index, attachment) => {
+    const fieldName = await resolveAttachmentFieldName(documentType);
+    
+    if (!attachment?.url) {
+        throw createServiceError('Attachment URL is required.', 400);
+    }
+    
+    if (typeof index !== 'number' || index < 0) {
+        throw createServiceError('Valid index is required.', 400);
+    }
+
+    try {
+        // Fetch current record to get existing attachments
+        const currentRecord = await table.find(recordId);
+        const currentFieldValue = currentRecord?.get(fieldName);
+        
+        if (!Array.isArray(currentFieldValue) || currentFieldValue.length === 0) {
+            throw createServiceError('No documents exist in this slot to replace.', 400);
+        }
+        
+        if (index >= currentFieldValue.length) {
+            throw createServiceError(`Index ${index} is out of bounds. Only ${currentFieldValue.length} file(s) exist.`, 400);
+        }
+        
+        // Build new attachments array: keep existing by ID except at index, insert new one
+        const newAttachments = currentFieldValue.map((att, i) => {
+            if (i === index) {
+                // Replace this one with new attachment
+                return {
+                    url: attachment.url,
+                    filename: attachment.filename,
+                };
+            }
+            // Keep existing attachment by ID
+            return { id: att.id };
+        });
+
+        const updatePayload = [{
+            id: recordId,
+            fields: {
+                [fieldName]: newAttachments,
+            },
+        }];
+
+        const updatedRecords = await table.update(updatePayload, { typecast: true });
+        if (!updatedRecords || updatedRecords.length === 0) {
+            throw new Error('Record update failed, no record returned.');
+        }
+        
+        return processRecord(updatedRecords[0]);
+    } catch (error) {
+        console.error(`Error replacing document at index ${index} (${documentType}) for record ${recordId}:`, error);
+        if (error.statusCode) {
+            throw error;
+        }
+        throw createServiceError(error.message || 'Failed to replace document at index.');
+    }
+};
+
+/**
+ * Removes a specific document at a given index within a document array field.
+ * Used for individual file deletion in multi-file slots like Final Map.
+ * 
+ * @param {string} recordId - Airtable record ID
+ * @param {string} documentType - Document type key (e.g., 'finalMap')
+ * @param {number} index - Index of file to remove (0-based)
+ * @returns {object} - Processed updated project record
+ */
+const detachDocumentAtIndex = async (recordId, documentType, index) => {
+    const fieldName = await resolveAttachmentFieldName(documentType);
+    
+    if (typeof index !== 'number' || index < 0) {
+        throw createServiceError('Valid index is required.', 400);
+    }
+
+    try {
+        // Fetch current record to get existing attachments
+        const currentRecord = await table.find(recordId);
+        const currentFieldValue = currentRecord?.get(fieldName);
+        
+        if (!Array.isArray(currentFieldValue) || currentFieldValue.length === 0) {
+            throw createServiceError('No documents exist in this slot to delete.', 400);
+        }
+        
+        if (index >= currentFieldValue.length) {
+            throw createServiceError(`Index ${index} is out of bounds. Only ${currentFieldValue.length} file(s) exist.`, 400);
+        }
+        
+        // Build new attachments array excluding the one at index
+        const newAttachments = currentFieldValue
+            .filter((_, i) => i !== index)
+            .map(att => ({ id: att.id }));
+
+        const updatePayload = [{
+            id: recordId,
+            fields: {
+                [fieldName]: newAttachments,
+            },
+        }];
+
+        const updatedRecords = await table.update(updatePayload, { typecast: true });
+        if (!updatedRecords || updatedRecords.length === 0) {
+            throw new Error('Record update failed, no record returned.');
+        }
+        
+        return processRecord(updatedRecords[0]);
+    } catch (error) {
+        console.error(`Error removing document at index ${index} (${documentType}) from record ${recordId}:`, error);
+        if (error.statusCode) {
+            throw error;
+        }
+        throw createServiceError(error.message || 'Failed to remove document at index.');
+    }
+};
+
+
 // --- Exports ---
 module.exports = {
     getAllSeasons,
@@ -945,6 +1072,8 @@ module.exports = {
     deleteSeasonOption,
     attachDocumentToProject,
     detachDocumentFromProject,
+    replaceDocumentAtIndex,
+    detachDocumentAtIndex,
     findProjectByEmail,
     findAllProjectsByEmail,
 };

@@ -1,10 +1,18 @@
 // src/features/admin/components/SeasonCard.jsx
-import React from 'react'; // Import React
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2 } from 'lucide-react'; // Import Trash icon
+import { Trash2 } from 'lucide-react';
 import Folder from "../../../assets/icons/folder.svg?react";
 
-// Add onDelete prop
+/**
+ * SeasonCard - Displays a season folder with project count
+ * 
+ * Includes optional delete action for the season.
+ * 
+ * @param {object} props
+ * @param {object} props.season - Season data object { year, projectCount, id }
+ * @param {function} [props.onDelete] - Optional callback to delete the season
+ */
 const SeasonCard = ({ season, onDelete }) => {
   const linkPath = `/admin/seasons/${season.year}`;
 

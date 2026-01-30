@@ -8,6 +8,7 @@
  * - Managing upload and delete state (loading, errors)
  * - Calculating next version numbers for draft maps
  * - Handling fallback document fields from legacy data
+ * - Individual file replace/delete for multi-file slots (e.g., Final Map)
  * 
  * Versioning Logic:
  * - Draft maps are automatically versioned as draftMap_v1, draftMap_v2, etc.
@@ -17,10 +18,6 @@
  * @param {Object} project - The current project data
  * @param {Function} loadProjectDetails - Function to reload project data after operations
  * @returns {Object} Document management state and operations
- * @returns {Object} docUploadState - Upload state { key, error }
- * @returns {Object} docDeleteState - Delete state { key, error }
- * @returns {Function} handleDocumentUpload - Function to upload a document
- * @returns {Function} handleDocumentDelete - Function to delete a document
  */
 
 import { useState } from "react";
@@ -32,7 +29,16 @@ export const useDocumentManagement = (projectId, project, loadProjectDetails) =>
   const [docUploadState, setDocUploadState] = useState({ key: null, error: null });
   const [docDeleteState, setDocDeleteState] = useState({ key: null, error: null });
 
-  const handleDocumentUpload = async (slotKey, file) => {
+  /**
+   * Upload a document to a project
+   * @param {string} slotKey - The document slot key (e.g., 'draftMap', 'agreement')
+   * @param {File} file - The file to upload
+   * @param {Object} options - Optional settings
+   * @param {boolean} options.skipRefresh - If true, skip calling loadProjectDetails after upload
+   */
+  const handleDocumentUpload = async (slotKey, file, options = {}) => {
+    const { skipRefresh = false } = options;
+    
     if (!projectId || !file) {
       return;
     }
@@ -62,14 +68,19 @@ export const useDocumentManagement = (projectId, project, loadProjectDetails) =>
       await apiService.uploadProjectDocument(projectId, slotKey, renamedFile);
       // Give Airtable a window to finish hosting
       await new Promise((resolve) => setTimeout(resolve, 5000));
-      await loadProjectDetails();
+      
+      // Only refresh if caller didn't request to skip
+      // (e.g., when adding a comment after upload, caller will refresh after comment is added)
+      if (!skipRefresh) {
+        await loadProjectDetails();
+      }
     } catch (uploadErr) {
       console.error("Failed to upload document:", uploadErr);
       setDocUploadState({
         key: null,
         error: uploadErr?.message || "Failed to upload document.",
       });
-      return;
+      throw uploadErr; // Re-throw so caller knows upload failed
     }
     setDocUploadState({ key: null, error: null });
   };
@@ -98,10 +109,75 @@ export const useDocumentManagement = (projectId, project, loadProjectDetails) =>
     }
   };
 
+  /**
+   * Replace a specific document at a given index within a multi-file slot.
+   * Used for individual file replacement in Final Map.
+   * @param {string} slotKey - The document slot key (e.g., 'finalMap')
+   * @param {File} file - The new file to upload
+   * @param {number} index - Index of file to replace (0-based)
+   */
+  const handleDocumentReplaceAtIndex = async (slotKey, file, index) => {
+    if (!projectId || !file || typeof index !== 'number') {
+      return;
+    }
+
+    setDocUploadState({ key: slotKey, error: null });
+    try {
+      await apiService.replaceProjectDocumentAtIndex(projectId, slotKey, index, file);
+      // Give Airtable a window to finish hosting
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await loadProjectDetails();
+    } catch (uploadErr) {
+      console.error(`Failed to replace document at index ${index}:`, uploadErr);
+      setDocUploadState({
+        key: null,
+        error: uploadErr?.message || "Failed to replace document.",
+      });
+      throw uploadErr;
+    }
+    setDocUploadState({ key: null, error: null });
+  };
+
+  /**
+   * Delete a specific document at a given index within a multi-file slot.
+   * Used for individual file deletion in Final Map.
+   * @param {Object} slot - The document slot object { key, label }
+   * @param {number} index - Index of file to delete (0-based)
+   * @param {string} filename - Optional filename for confirmation dialog
+   */
+  const handleDocumentDeleteAtIndex = async (slot, index, filename) => {
+    if (!projectId || !slot?.key || typeof index !== 'number') {
+      return;
+    }
+    
+    const displayName = filename || `File ${index + 1}`;
+    const confirmed = window.confirm(
+      `Delete "${displayName}" from ${slot.label}? This cannot be undone.`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setDocDeleteState({ key: slot.key, error: null });
+    try {
+      await apiService.deleteProjectDocumentAtIndex(projectId, slot.key, index);
+      await loadProjectDetails();
+      setDocDeleteState({ key: null, error: null });
+    } catch (deleteErr) {
+      console.error(`Failed to delete document at index ${index}:`, deleteErr);
+      setDocDeleteState({
+        key: null,
+        error: deleteErr?.message || "Failed to delete document.",
+      });
+    }
+  };
+
   return {
     docUploadState,
     docDeleteState,
     handleDocumentUpload,
-    handleDocumentDelete
+    handleDocumentDelete,
+    handleDocumentReplaceAtIndex,
+    handleDocumentDeleteAtIndex
   };
 };

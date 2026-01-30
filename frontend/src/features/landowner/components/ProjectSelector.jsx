@@ -1,6 +1,16 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 
+/**
+ * ProjectSelector - Allows landowners to switch between multiple assigned projects
+ * 
+ * Shows current project details and navigation arrows.
+ * 
+ * @param {object} props
+ * @param {Array} [props.projects] - List of assigned projects
+ * @param {string} props.currentProjectId - ID of the currently selected project
+ * @param {function} props.onSelectProject - Callback(projectId) when project changes
+ */
 const ProjectSelector = ({ 
   projects = [], 
   currentProjectId, 

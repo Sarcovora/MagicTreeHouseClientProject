@@ -2,6 +2,18 @@ import PropTypes from "prop-types";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
 
+/**
+ * ProtectedRoute - Wrapper for routes requiring authentication
+ * 
+ * Redirects to login if unauthenticated.
+ * Handles role-based access control (admin vs landowner).
+ * Shows loading state while auth initializes.
+ * 
+ * @param {object} props
+ * @param {React.ReactNode} props.children - Child routes/components to render
+ * @param {boolean} [props.requiresAdmin=false] - If true, requires admin privileges
+ * @param {boolean} [props.disallowAdmin=false] - If true, redirects admins away (e.g., from landowner dashboard)
+ */
 const ProtectedRoute = ({
   children,
   requiresAdmin = false,

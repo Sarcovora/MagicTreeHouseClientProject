@@ -38,7 +38,7 @@ import { useState } from "react";
 import apiService from "../../../services/apiService";
 import { useToast } from "../../../contexts/ToastContext";
 
-export const useCommentLogic = (projectId, setProject, handleDocumentUpload, setError) => {
+export const useCommentLogic = (projectId, setProject, handleDocumentUpload, setError, loadProjectDetails) => {
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentModalMode, setCommentModalMode] = useState('standalone'); // 'standalone' | 'upload'
@@ -62,19 +62,22 @@ export const useCommentLogic = (projectId, setProject, handleDocumentUpload, set
     try {
       // Logic depends on mode
       if (commentModalMode === 'upload' && pendingDraftMapUpload) {
-        // 1. Upload the file FIRST
-        await handleDocumentUpload('draftMap', pendingDraftMapUpload);
+        // 1. Upload the file FIRST with skipRefresh to prevent mid-flow re-render
+        await handleDocumentUpload('draftMap', pendingDraftMapUpload, { skipRefresh: true });
         
         // 2. If upload succeeds, add the comment
         if (comment.trim()) {
-            const updatedProject = await apiService.addDraftMapComment(projectId, comment);
-            setProject(updatedProject);
+            await apiService.addDraftMapComment(projectId, comment);
+        }
+        
+        // 3. Single refresh at the end after both operations complete
+        if (loadProjectDetails) {
+          await loadProjectDetails();
         }
         
         setPendingDraftMapUpload(null);
         addToast("Draft map uploaded with comment", "success");
       } else {
-        // Standalone comment
         if (comment.trim()) {
             const updatedProject = await apiService.addDraftMapComment(projectId, comment);
             setProject(updatedProject);

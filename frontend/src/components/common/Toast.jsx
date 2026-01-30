@@ -1,6 +1,24 @@
+// src/components/common/Toast.jsx
 import React, { useEffect } from 'react';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
 
+/**
+ * Toast - Notification toast that automatically dismisses after a duration
+ * 
+ * Supports three types: success (green), error (red), and info (blue).
+ * Used via the ToastContext/ToastProvider for global notifications.
+ * 
+ * @param {object} props
+ * @param {string} props.message - Text content to display in the toast
+ * @param {string} [props.type="info"] - Toast type: "success", "error", or "info"
+ * @param {number} [props.duration=3000] - Auto-dismiss delay in milliseconds
+ * @param {function} props.onClose - Callback when toast is dismissed (auto or manual)
+ * 
+ * @example
+ * // Typically accessed via the useToast hook:
+ * const { addToast } = useToast();
+ * addToast("File uploaded!", "success");
+ */
 const Toast = ({ message, type = 'info', duration = 3000, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {

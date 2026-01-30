@@ -7,8 +7,6 @@ import ProjectDetail from "./features/admin/pages/ProjectDetail";
 import SeasonProjectList from "./features/admin/pages/SeasonProjectList";
 import Map from "./pages/Map";
 import PhotoGallery from "./pages/PhotoGallery";
-import Forms from "./pages/Forms";
-import FormDetail from "./features/admin/pages/FormDetail";
 import LandownerLayout from "./features/landowner/layouts/LandownerLayout";
 import LandownerDashboard from "./features/landowner/pages/LandownerDashboard";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
@@ -42,8 +40,6 @@ function App() {
           <Route path="project/:id" element={<ProjectDetail />} />
           <Route path="map" element={<Map />} />
           <Route path="gallery" element={<PhotoGallery />} />
-          <Route path="forms" element={<Forms />} />
-          <Route path="forms/:id" element={<FormDetail />} />
           <Route path="account" element={<AccountPage />} />
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
@@ -62,7 +58,6 @@ function App() {
            <Route path="project/:id" element={<ProjectDetail />} />
            <Route path="map" element={<Map />} />
            <Route path="gallery" element={<PhotoGallery />} />
-           <Route path="forms" element={<Forms />} />
            <Route path="account" element={<AccountPage />} />
            <Route index element={<Navigate to="/landowner/dashboard" replace />} />
            <Route path="*" element={<Navigate to="/landowner/dashboard" replace />} />

@@ -1,4 +1,11 @@
+// src/contexts/ToastContext.jsx
 import React, { createContext, useContext, useState, useCallback } from 'react';
+
+/**
+ * ToastProvider - Manages global toast notifications
+ * 
+ * Provides `useToast()` hook to trigger notifications from anywhere in the app.
+ */
 import Toast from '../components/common/Toast';
 
 const ToastContext = createContext(null);

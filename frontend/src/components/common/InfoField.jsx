@@ -1,6 +1,20 @@
 // src/components/common/InfoField.jsx
 import PropTypes from "prop-types";
 
+/**
+ * InfoField - Labeled field for displaying a single piece of information
+ * 
+ * Can optionally render the value as a clickable link. 
+ * Displays a placeholder text when the value is empty/null/undefined.
+ * Typically used inside an InfoCard for structured data display.
+ * 
+ * @param {object} props
+ * @param {string} props.label - The field label (displayed in uppercase)
+ * @param {string|number} [props.value] - The field value to display
+ * @param {string} [props.href] - Optional URL to make the value a clickable link
+ * @param {string} [props.valueClassName] - Additional CSS classes for the value text
+ * @param {string} [props.placeholder="Not provided"] - Text to show when value is empty
+ */
 const InfoField = ({
   label,
   value,

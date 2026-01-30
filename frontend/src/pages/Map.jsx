@@ -220,7 +220,8 @@ const Map = () => {
              <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
                 <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">Add Comment</h3><button onClick={() => setShowCommentModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button></div>
                 <p className="text-sm text-gray-500 mb-3">Adding comment at position ({newCommentPosition.x.toFixed(1)}%, {newCommentPosition.y.toFixed(1)}%)</p>
-                <textarea className="w-full p-2 border border-gray-300 rounded-lg mb-4 h-24 focus:ring-green-500 focus:border-green-500" placeholder="Enter your comment here..." value={newCommentText} onChange={(e) => setNewCommentText(e.target.value)} rows={3}></textarea>
+                <textarea className="w-full p-2 border border-gray-300 rounded-lg mb-1 h-24 focus:ring-green-500 focus:border-green-500" placeholder="Enter your comment here..." value={newCommentText} onChange={(e) => setNewCommentText(e.target.value)} maxLength={500} rows={3}></textarea>
+                <div className="text-xs text-gray-500 text-right mb-3">{newCommentText.length}/500 characters</div>
                 <div className="flex justify-end space-x-3"><button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm" onClick={() => setShowCommentModal(false)}>Cancel</button><button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:bg-gray-400" onClick={handleAddComment} disabled={!newCommentText.trim()}>Add Comment</button></div>
              </div>
           </div>

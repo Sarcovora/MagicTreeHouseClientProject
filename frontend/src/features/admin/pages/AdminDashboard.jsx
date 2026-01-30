@@ -1,10 +1,8 @@
 // src/features/admin/pages/AdminDashboard.jsx
 import { useState, useEffect, useCallback } from "react";
 
-
 import SeasonCard from "../components/SeasonCard";
 import SearchBar from "../../../components/ui/SearchBar";
-import Modal from "../../../components/common/Modal";
 
 import apiService from "../../../services/apiService";
 import { AlertCircle } from "lucide-react";
@@ -14,12 +12,10 @@ const AdminDashboard = () => {
   const [seasons, setSeasons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [actionError, setActionError] = useState(null);
 
   const loadDashboardData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setActionError(null);
     try {
       const seasonYears = await apiService.getSeasons();
       const uniqueSeasonYears = [...new Set(seasonYears)].filter(Boolean);
@@ -60,28 +56,6 @@ const AdminDashboard = () => {
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
-
-
-
-  const handleSeasonDelete = async (seasonId, seasonYear) => {
-    setActionError(null);
-    if (
-      !window.confirm(
-        `Are you sure you want to delete the season "${seasonYear}"? This action cannot be undone.`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await apiService.deleteSeason(seasonId);
-      setSeasons((prevSeasons) => prevSeasons.filter((season) => season.id !== seasonId));
-    } catch (err) {
-      console.error(`Dashboard: Failed to delete season ${seasonYear} (${seasonId}):`, err);
-      setActionError(err.message || `Failed to delete season "${seasonYear}". Please try again.`);
-    }
-  };
-
   const filteredSeasons = seasons.filter((season) => {
     const lowerSearch = searchTerm.trim().toLowerCase();
     if (!lowerSearch) {
@@ -126,17 +100,11 @@ const AdminDashboard = () => {
 
     return (
       <>
-        {actionError && (
-          <div className="mb-4 text-center text-red-500 bg-red-100 p-3 rounded-lg flex items-center justify-center shadow-sm">
-            <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" /> {actionError}
-          </div>
-        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredSeasons.map((season) => (
             <SeasonCard
               key={season.id}
               season={season}
-              onDelete={() => handleSeasonDelete(season.id, season.year)}
             />
           ))}
         </div>

@@ -115,8 +115,7 @@ This is the complete folder structure of the frontend. **Study this carefully** 
 ```
 frontend/
 ├── public/                          # Static assets (served as-is)
-│   ├── pdfs/                        # Downloadable PDF forms
-│   └── images/                      # Static images
+│   └── vite.svg                     # Vite favicon
 │
 ├── src/
 │   ├── main.jsx                     # App entry point - wraps App in providers
@@ -147,7 +146,6 @@ frontend/
 │   │   │   ├── InfoCard.jsx         # Card container with title
 │   │   │   ├── InfoField.jsx        # Label + value display row
 │   │   │   ├── Lightbox.jsx         # Full-screen image viewer
-│   │   │   ├── Modal.jsx            # Generic modal wrapper
 │   │   │   ├── Toast.jsx            # Notification message component
 │   │   │   └── UserAvatar.jsx       # User profile picture/initials
 │   │   │
@@ -155,7 +153,6 @@ frontend/
 │   │       └── SearchBar.jsx        # Search input
 │   │
 │   ├── pages/                       # Shared pages (admin & landowner)
-│   │   ├── Forms.jsx                # Downloadable forms list
 │   │   ├── Map.jsx                  # Map view
 │   │   └── PhotoGallery.jsx         # Photo gallery
 │   │
@@ -287,7 +284,7 @@ Services are organized by domain:
 |-------------|-----------------|
 | `projectService.js` | CRUD operations for projects |
 | `seasonService.js` | Fetching and managing seasons |
-| `documentService.js` | Uploading/deleting files |
+| `documentService.js` | Uploading, replacing, and deleting files (supports versioning) |
 | `landownerService.js` | Landowner-specific endpoints |
 | `apiHelpers.js` | Caching, normalization utilities |
 | `apiService.js` | Re-exports everything (legacy) |
@@ -488,9 +485,16 @@ This way, files end up on Airtable's servers (free hosting), and Cloudinary is j
 3. Fill out the form (use your TreeFolks email)
 4. Verify your email
 
+**Step 2: Update Permissions**
+1. Click the settings/gear icon on the bottom left
+2. Click security on the side panel
+3. Enable PDF and Zip File delivery
+4. Press save
+![alt text](<Screenshot 2026-01-30 at 1.46.34 PM.png>)
+
 **Step 2: Get Your Credentials**
 1. Log into [Cloudinary Console](https://console.cloudinary.com)
-![alt text](<Screenshot 2026-01-30 at 12.55.34 PM.png>)
+
 
 2. On the Dashboard, you'll see three key values:
    - **Cloud Name** (e.g., `dxyz123abc`)

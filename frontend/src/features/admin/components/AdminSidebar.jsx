@@ -1,5 +1,11 @@
 // src/features/admin/components/AdminSidebar.jsx
 import React, { useState } from "react";
+
+/**
+ * AdminSidebar - Main navigation sidebar for the admin dashboard
+ * 
+ * Handles navigation, user profile display, and logout.
+ */
 import {
   TreePine,
   FormInput,

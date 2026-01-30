@@ -65,15 +65,12 @@ export async function saveAnnotatedImage({
       
       enlivenedObjects.forEach((obj) => {
         // Scale position and size proportionally
+        // Note: scaleX/scaleY transforms automatically scale the visual stroke thickness,
+        // so we do NOT need to manually adjust strokeWidth
         obj.left *= scaleFactor;
         obj.top *= scaleFactor;
         obj.scaleX *= scaleFactor;
         obj.scaleY *= scaleFactor;
-        
-        // Scale stroke width for paths
-        if (obj.strokeWidth) {
-          obj.strokeWidth *= scaleFactor;
-        }
         
         obj.setCoords();
         staticCanvas.add(obj);

@@ -28,6 +28,15 @@ const LoadingState = () => (
   </div>
 );
 
+/**
+ * AuthProvider - Context provider for Firebase authentication
+ * 
+ * Manages user session state, profile loading from Firestore, and admin status.
+ * Provides `useAuth()` hook for accessing user data and sign-out function.
+ * 
+ * @param {object} props
+ * @param {React.ReactNode} props.children - App components to wrap
+ */
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -93,4 +102,9 @@ AuthProvider.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
+/**
+ * useAuth - Hook to access authentication context
+ * 
+ * @returns {object} Auth context { user, profile, isAdmin, loading, signOut, updateProfileState }
+ */
 export const useAuth = () => useContext(AuthContext);

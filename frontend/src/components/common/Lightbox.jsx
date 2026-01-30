@@ -1,11 +1,11 @@
+// src/components/common/Lightbox.jsx
 import { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 /**
- * Lightbox Component
+ * Lightbox - Displays an image in a full-screen modal overlay with navigation controls
  * 
- * Displays an image in a full-screen modal overlay with navigation controls.
  * Supports updating the current image via index prop.
  * 
  * @param {object} props

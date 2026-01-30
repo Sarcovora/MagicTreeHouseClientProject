@@ -110,12 +110,16 @@ const DraftMapCommentModal = ({
           <textarea
             className="w-full rounded-md border border-gray-300 p-3 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
             rows={4}
+            maxLength={500}
             placeholder={content.placeholder}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             required={isCommentRequired}
             disabled={isSubmitting}
           />
+          <div className="mt-1 text-xs text-gray-500 text-right">
+            {comment.length}/500 characters
+          </div>
           
           <div className="mt-6 flex justify-end space-x-3">
             <button

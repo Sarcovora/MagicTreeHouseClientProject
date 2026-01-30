@@ -42,6 +42,11 @@ router.post('/projects/:recordId/documents', airtableController.handleUploadProj
 // Delete a project document (attachments) - Permissions handled in controller
 router.delete('/projects/:recordId/documents/:documentType', airtableController.handleDeleteProjectDocument);
 
+// Replace a specific document at index within a multi-file slot (admin only)
+router.put('/projects/:recordId/documents/:documentType/:index', airtableController.handleReplaceProjectDocumentAtIndex);
+// Delete a specific document at index within a multi-file slot (admin only)
+router.delete('/projects/:recordId/documents/:documentType/:index', airtableController.handleDeleteProjectDocumentAtIndex);
+
 // GET project associated with the logged-in landowner (legacy - returns first match)
 router.get('/projects/my-project', airtableController.handleGetLandownerProject);
 

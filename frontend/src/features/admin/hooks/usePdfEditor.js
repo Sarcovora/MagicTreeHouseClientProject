@@ -30,7 +30,7 @@ import apiService from "../../../services/apiService";
 import { ensureArray } from "../utils/projectHelpers";
 import { DOCUMENT_SLOTS } from "../constants/projectConstants";
 
-export const usePdfEditor = (projectId, project, handleDocumentUpload) => {
+export const usePdfEditor = (projectId, project, handleDocumentUpload, loadProjectDetails) => {
   const [pdfEditorState, setPdfEditorState] = useState({ isOpen: false, pdfUrl: null, documentType: null, filename: null });
 
   const handleDocumentEdit = (documentType, pdfUrl, forceIsPdf, filename) => {
@@ -82,12 +82,18 @@ export const usePdfEditor = (projectId, project, handleDocumentUpload) => {
       
       console.log(`Uploading annotated file: ${newName}, type: ${mimeType}, size: ${blob.size} bytes`);
       
-      // 1. Upload the file FIRST
-      await handleDocumentUpload(pdfEditorState.documentType, file);
+      // 1. Upload the file FIRST with skipRefresh to prevent mid-flow re-render
+      await handleDocumentUpload(pdfEditorState.documentType, file, { skipRefresh: true });
       
-      // 2. If upload succeeds, add the comment
-      if (comment && comment.trim()) {
+      // 2. If upload succeeds, add the comment (only for draftMaps)
+      if (pdfEditorState.documentType === 'draftMap' && comment && comment.trim()) {
          await apiService.addDraftMapComment(projectId, comment);
+      }
+      
+      // 3. Single refresh at the end after both operations complete
+      // This prevents the flash caused by refreshing between upload and comment
+      if (loadProjectDetails) {
+        await loadProjectDetails();
       }
       
       // Close editor only after success

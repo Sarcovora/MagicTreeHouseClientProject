@@ -4,8 +4,21 @@ import PropTypes from "prop-types";
 import { ChevronLeft, ChevronRight, File, Download } from "lucide-react";
 
 /**
- * Lightweight image carousel with preloading for smooth navigation.
+ * Carousel - Lightweight image carousel with preloading for smooth navigation
+ * 
  * Preloads adjacent images to eliminate delay when navigating.
+ * Falls back to a "Preview not available" state for failed/non-image files.
+ * 
+ * @param {object} props
+ * @param {string[]} props.images - Array of image URLs to display
+ * @param {string} [props.className] - Additional CSS classes for the outer container
+ * @param {string} [props.imageClassName] - Additional CSS classes for the image element
+ * @param {string} [props.rounded="rounded-lg"] - Tailwind rounded class for corners
+ * @param {string} [props.shadow="shadow-sm"] - Tailwind shadow class
+ * @param {string} [props.aspectClass="aspect-video"] - Aspect ratio class for the container
+ * @param {boolean} [props.showDots=true] - Whether to show navigation dots below carousel
+ * @param {boolean} [props.showArrows=true] - Whether to show left/right arrow buttons
+ * @param {function} [props.onImageClick] - Callback(imageUrl) when an image is clicked
  */
 const Carousel = ({
   images,

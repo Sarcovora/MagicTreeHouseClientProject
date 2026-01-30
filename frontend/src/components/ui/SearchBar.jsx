@@ -1,4 +1,13 @@
 // /Users/sahils/Desktop/clientProject/clientProject/frontend/src/components/SearchBar.jsx
+/**
+ * SearchBar - Input component for searching/filtering data
+ * 
+ * Simple wrapper around a controlled input.
+ * 
+ * @param {object} props
+ * @param {string} props.value - Current search term
+ * @param {function} props.onChange - Callback(newValue) when input changes
+ */
 const SearchBar = ({ value, onChange }) => {
   return (
     <input

@@ -63,6 +63,8 @@ GET    /api/projects/my-projects                       (Landowner)
 
 POST   /api/projects/:recordId/documents
 DELETE /api/projects/:recordId/documents/:type         (Admin)
+DELETE /api/projects/:recordId/documents/:type/:index  (Admin - Delete specific file)
+PUT    /api/projects/:recordId/documents/:type/:index  (Admin - Replace specific file)
 
 POST   /api/projects/:recordId/draft-map/comments      (Landowner)
 ```
@@ -103,6 +105,16 @@ npm audit fix
 | Auth errors (401/403) | Verify `FIREBASE_SERVICE_ACCOUNT_JSON`, check Firestore `isAdmin` |
 | File uploads fail | Verify `CLOUDINARY_URL`, check quota |
 | Airtable errors | Check IDs match, verify PAT scopes, field names exact match |
+
+---
+
+## File Handling (Cloudinary)
+
+Files uploaded via the API are temporarily stored in Cloudinary before being attached to Airtable.
+- **Auto-Deletion**: Cloudinary assets are **automatically deleted** after the upload is confirmed (default: 60s delay, or 5m for slower files).
+- **Configuration**: `CLOUDINARY_DELETE_DELAY_MS` in `.env` controls this delay.
+- **Logic**: See `controllers/airtableController.js` (lines 184+) and `services/cloudinaryService.js`.
+
 
 **Detailed solutions:** [Architecture Guide - Troubleshooting](../documentation/BACKEND_ARCHITECTURE.md#troubleshooting)
 

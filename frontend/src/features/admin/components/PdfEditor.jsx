@@ -1,9 +1,5 @@
 /**
- * PdfEditor Component
- * 
- * A full-screen annotation editor for PDFs and images. Allows users to
- * draw on documents with customizable pen color and size, then save
- * the annotated version.
+ * PdfEditor - Full-screen annotation editor for PDFs and images
  * 
  * Features:
  * - PDF multi-page navigation with per-page annotation persistence
@@ -12,10 +8,7 @@
  * - Undo and clear functionality
  * - Integrated comment field for detailed feedback
  * 
- * Dependencies:
- * - react-pdf: PDF rendering
- * - fabric.js: Canvas drawing
- * - pdf-lib: PDF modification
+ * @param {object} props
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -30,28 +23,48 @@ import { saveAnnotatedImage, saveAnnotatedPdf } from '../utils/pdfEditorHelpers'
 
 // ==================== Configuration ====================
 
-// Configure PDF.js worker (required for react-pdf)
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+/**
+ * Configure PDF.js worker (required for react-pdf)
+ * Uses local worker from pdfjs-dist via Vite URL for better reliability
+ */
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
 
-// Default dimensions before document loads
+/**
+ * Default canvas dimensions before document loads
+ */
 const DEFAULT_DIMENSIONS = { width: 800, height: 600 };
 
-// Maximum display size to fit on screen
+/**
+ * Maximum display dimensions to fit on screen
+ * Documents larger than this will be scaled down
+ */
 const MAX_DISPLAY_WIDTH = 1000;
 const MAX_DISPLAY_HEIGHT = 800;
+
+/**
+ * PDF rendering scale factor for quality
+ */
+const PDF_SCALE = 1.5;
 
 // ==================== Helper Functions ====================
 
 /**
  * Calculates scaled dimensions to fit within max bounds while preserving aspect ratio.
  * 
- * @param {number} naturalWidth - Original width
- * @param {number} naturalHeight - Original height
- * @returns {object} - { width, height, scale } for display
+ * Used when loading images to ensure they fit on screen while maintaining
+ * their original proportions.
+ * 
+ * @param {number} naturalWidth - Original width of the document
+ * @param {number} naturalHeight - Original height of the document
+ * @returns {{width: number, height: number, scale: number}} Display dimensions and scale factor
  */
 function calculateDisplayDimensions(naturalWidth, naturalHeight) {
   let scale = 1;
   
+  // Only scale down if larger than max
   if (naturalWidth > MAX_DISPLAY_WIDTH || naturalHeight > MAX_DISPLAY_HEIGHT) {
     const scaleX = MAX_DISPLAY_WIDTH / naturalWidth;
     const scaleY = MAX_DISPLAY_HEIGHT / naturalHeight;
@@ -65,13 +78,157 @@ function calculateDisplayDimensions(naturalWidth, naturalHeight) {
   };
 }
 
-// ==================== Component ====================
+/**
+ * Detects if the URL points to a PDF file.
+ * 
+ * @param {string} url - URL to check
+ * @param {boolean|undefined} propOverride - Optional prop to force PDF/image mode
+ * @returns {boolean} True if document is a PDF
+ */
+function detectIsPdf(url, propOverride) {
+  if (propOverride !== undefined) {
+    return propOverride;
+  }
+  const cleanUrl = url?.split('?')[0]?.toLowerCase();
+  return cleanUrl?.endsWith('.pdf');
+}
+
+// ==================== Subcomponents ====================
 
 /**
+ * Header bar with title and save/cancel buttons.
+ */
+const EditorHeader = ({ isPdf, onCancel, onSave, isLoading, canSave }) => (
+  <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-6 py-4">
+    <h2 className="text-xl font-semibold text-gray-900">
+      Edit {isPdf ? 'Document' : 'Image'}
+    </h2>
+    <div className="flex items-center gap-3">
+      <button
+        onClick={onCancel}
+        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={onSave}
+        disabled={isLoading || !canSave}
+        className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <Download className="h-4 w-4" />
+        {isLoading ? 'Saving...' : 'Save Annotations'}
+      </button>
+    </div>
+  </div>
+);
+
+/**
+ * Drawing toolbar with pen settings and undo/clear buttons.
+ */
+const DrawingToolbar = ({ penSize, setPenSize, penColor, setPenColor, onUndo, onClear }) => (
+  <div className="flex items-center gap-4 border-b border-gray-200 bg-gray-50 px-6 py-3">
+    {/* Pen Size Slider */}
+    <div className="flex items-center gap-2">
+      <Pencil className="h-4 w-4 text-gray-600" />
+      <label className="text-sm font-medium text-gray-700">Pen Size:</label>
+      <input
+        type="range"
+        min="1"
+        max="20"
+        value={penSize}
+        onChange={(e) => setPenSize(Number(e.target.value))}
+        className="w-32"
+      />
+      <span className="text-sm text-gray-600">{penSize}px</span>
+    </div>
+
+    {/* Pen Color Picker */}
+    <div className="flex items-center gap-2">
+      <label className="text-sm font-medium text-gray-700">Color:</label>
+      <input
+        type="color"
+        value={penColor}
+        onChange={(e) => setPenColor(e.target.value)}
+        className="h-8 w-16 cursor-pointer rounded border border-gray-300"
+      />
+    </div>
+
+    {/* Undo/Clear Buttons */}
+    <div className="ml-auto flex items-center gap-2">
+      <button
+        onClick={onUndo}
+        className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+      >
+        <Undo className="h-4 w-4" />
+        Undo
+      </button>
+      <button
+        onClick={onClear}
+        className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+      >
+        <Trash2 className="h-4 w-4" />
+        Clear All
+      </button>
+    </div>
+  </div>
+);
+
+/**
+ * Comment input field (shown when comments are required).
+ */
+const CommentField = ({ comment, setComment, isLoading }) => (
+  <div className="px-6 pt-4">
+    <div className="flex items-center gap-2 mb-2">
+      <MessageSquare className="h-4 w-4 text-green-600" />
+      <label className="text-sm font-bold text-gray-800">
+        Comment Required <span className="text-red-500">*</span>
+      </label>
+    </div>
+    <textarea
+      value={comment}
+      onChange={(e) => setComment(e.target.value)}
+      placeholder="Please describe your annotations or changes..."
+      className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+      rows={2}
+      disabled={isLoading}
+    />
+  </div>
+);
+
+/**
+ * PDF page navigation controls.
+ */
+const PageNavigation = ({ currentPage, numPages, onPrevious, onNext }) => (
+  <div className="flex items-center justify-center gap-4 px-6 py-4">
+    <button
+      onClick={onPrevious}
+      disabled={currentPage <= 1}
+      className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
+    >
+      Previous
+    </button>
+    <p className="text-sm text-gray-600">
+      Page {currentPage} of {numPages}
+    </p>
+    <button
+      onClick={onNext}
+      disabled={currentPage >= numPages}
+      className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
+    >
+      Next
+    </button>
+  </div>
+);
+
+// ==================== Main Component ====================
+
+/**
+ * PdfEditor - Full-screen annotation editor for PDFs and images.
+ * 
  * @param {object} props
  * @param {string} props.pdfUrl - URL of the PDF or image to edit
  * @param {boolean} [props.isPdf] - Force PDF mode (auto-detected from URL if not provided)
- * @param {function} props.onSave - Callback with annotated blob and optional comment
+ * @param {function} props.onSave - Callback receiving (blob, comment) when user saves
  * @param {function} props.onCancel - Callback to close editor
  * @param {boolean} props.requireComment - Whether to show and require a comment field
  */
@@ -102,15 +259,11 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel, requireComment 
 
   // ==================== Computed Values ====================
   
-  // Determine if this is a PDF or image
-  const cleanUrl = pdfUrl?.split('?')[0]?.toLowerCase();
-  const urlIsPdf = cleanUrl?.endsWith('.pdf');
-  const isPdf = propIsPdf !== undefined ? propIsPdf : urlIsPdf;
+  const isPdf = detectIsPdf(pdfUrl, propIsPdf);
   const isImage = !isPdf;
-
   const canSave = !requireComment || comment.trim().length > 0;
 
-  console.log('PdfEditor Debug:', { pdfUrl: cleanUrl, isPdf, isImage });
+  console.log('PdfEditor Debug:', { pdfUrl: pdfUrl?.split('?')[0], isPdf, isImage });
 
   // ==================== Canvas Initialization ====================
   
@@ -220,16 +373,18 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel, requireComment 
   
   /**
    * Called when PDF document loads successfully.
+   * Sets total page count for navigation.
    */
   const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
   };
 
   /**
-   * Called when a PDF page loads. Sets canvas dimensions to match.
+   * Called when a PDF page loads.
+   * Sets canvas dimensions to match rendered page.
    */
   const onPageLoadSuccess = (page) => {
-    const viewport = page.getViewport({ scale: 1.5 });
+    const viewport = page.getViewport({ scale: PDF_SCALE });
     setPdfDimensions({
       width: viewport.width,
       height: viewport.height,
@@ -237,7 +392,8 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel, requireComment 
   };
 
   /**
-   * Called when an image loads. Calculates optimal display size.
+   * Called when an image loads.
+   * Calculates optimal display size while storing original dimensions.
    */
   const onImageLoad = (e) => {
     const { naturalWidth, naturalHeight } = e.target;
@@ -273,7 +429,8 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel, requireComment 
   };
 
   /**
-   * Saves current page annotations to state (used before page change).
+   * Saves current page annotations to state.
+   * Called before page change to persist annotations.
    */
   const saveCurrentPageAnnotations = () => {
     if (!canvas) return;
@@ -285,10 +442,11 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel, requireComment 
     }));
   };
 
-  // ==================== Save Handlers ====================
+  // ==================== Save Handler ====================
   
   /**
-   * Main save handler. Collects all annotations and saves document.
+   * Main save handler.
+   * Collects all annotations across pages and generates output file.
    */
   const handleSave = async () => {
     if (!canvas) return;
@@ -347,74 +505,23 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel, requireComment 
       <div className="flex h-full w-full max-w-7xl flex-col bg-white">
         
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-6 py-4">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Edit {isPdf ? 'Document' : 'Image'}
-          </h2>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onCancel}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isLoading || (requireComment && !comment.trim())}
-              className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="h-4 w-4" />
-              {isLoading ? 'Saving...' : 'Save Annotations'}
-            </button>
-          </div>
-        </div>
+        <EditorHeader
+          isPdf={isPdf}
+          onCancel={onCancel}
+          onSave={handleSave}
+          isLoading={isLoading}
+          canSave={canSave}
+        />
 
         {/* Drawing Toolbar */}
-        <div className="flex items-center gap-4 border-b border-gray-200 bg-gray-50 px-6 py-3">
-          {/* Pen Size */}
-          <div className="flex items-center gap-2">
-            <Pencil className="h-4 w-4 text-gray-600" />
-            <label className="text-sm font-medium text-gray-700">Pen Size:</label>
-            <input
-              type="range"
-              min="1"
-              max="20"
-              value={penSize}
-              onChange={(e) => setPenSize(Number(e.target.value))}
-              className="w-32"
-            />
-            <span className="text-sm text-gray-600">{penSize}px</span>
-          </div>
-
-          {/* Pen Color */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Color:</label>
-            <input
-              type="color"
-              value={penColor}
-              onChange={(e) => setPenColor(e.target.value)}
-              className="h-8 w-16 cursor-pointer rounded border border-gray-300"
-            />
-          </div>
-
-          {/* Undo/Clear Buttons */}
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={handleUndo}
-              className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
-            >
-              <Undo className="h-4 w-4" />
-              Undo
-            </button>
-            <button
-              onClick={handleClear}
-              className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
-            >
-              <Trash2 className="h-4 w-4" />
-              Clear All
-            </button>
-          </div>
-        </div>
+        <DrawingToolbar
+          penSize={penSize}
+          setPenSize={setPenSize}
+          penColor={penColor}
+          setPenColor={setPenColor}
+          onUndo={handleUndo}
+          onClear={handleClear}
+        />
 
         {/* Document Viewer with Canvas Overlay */}
         <div className="flex-1 overflow-auto bg-gray-100 p-6">
@@ -438,7 +545,7 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel, requireComment 
                   >
                     <Page
                       pageNumber={currentPage}
-                      scale={1.5}
+                      scale={PDF_SCALE}
                       onLoadSuccess={onPageLoadSuccess}
                       renderTextLayer={false}
                       renderAnnotationLayer={false}
@@ -474,53 +581,29 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel, requireComment 
           </div>
         </div>
 
-        {/* Comment Field and Footer */}
+        {/* Footer: Comment Field and Page Navigation */}
         <div className="border-t border-gray-200 bg-gray-50">
           
-          {/* Required Comment Field */}
+          {/* Comment Field (when required) */}
           {requireComment && (
-            <div className="px-6 pt-4">
-              <div className="flex items-center gap-2 mb-2">
-                <MessageSquare className="h-4 w-4 text-green-600" />
-                <label className="text-sm font-bold text-gray-800">
-                  Comment Required <span className="text-red-500">*</span>
-                </label>
-              </div>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Please describe your annotations or changes..."
-                className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-                rows={2}
-                disabled={isLoading}
-              />
-            </div>
+            <CommentField
+              comment={comment}
+              setComment={setComment}
+              isLoading={isLoading}
+            />
           )}
 
-          {/* Page Navigation (PDF Only) */}
+          {/* Page Navigation (PDF Only, multi-page) */}
           {isPdf && numPages && numPages > 1 && (
-            <div className="flex items-center justify-center gap-4 px-6 py-4">
-              <button
-                onClick={() => changePage(-1)}
-                disabled={currentPage <= 1}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <p className="text-sm text-gray-600">
-                Page {currentPage} of {numPages}
-              </p>
-              <button
-                onClick={() => changePage(1)}
-                disabled={currentPage >= numPages}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
+            <PageNavigation
+              currentPage={currentPage}
+              numPages={numPages}
+              onPrevious={() => changePage(-1)}
+              onNext={() => changePage(1)}
+            />
           )}
           
-          {/* Spacer if no pagination but needs padding bottom */}
+          {/* Spacer if no pagination but has comment */}
           {(!isPdf || !numPages || numPages <= 1) && requireComment && (
             <div className="h-4"></div>
           )}

@@ -55,7 +55,9 @@ const ProjectDetail = () => {
     docUploadState,
     docDeleteState,
     handleDocumentUpload,
-    handleDocumentDelete
+    handleDocumentDelete,
+    handleDocumentReplaceAtIndex,
+    handleDocumentDeleteAtIndex
   } = useDocumentManagement(projectId, project, loadProjectDetails);
 
   const {
@@ -74,7 +76,7 @@ const ProjectDetail = () => {
     handleDocumentEdit,
     handlePdfEditorSave,
     handlePdfEditorCancel
-  } = usePdfEditor(projectId, project, handleDocumentUpload);
+  } = usePdfEditor(projectId, project, handleDocumentUpload, loadProjectDetails);
 
   const {
     isCommentModalOpen,
@@ -85,7 +87,7 @@ const ProjectDetail = () => {
     handleDraftMapUploadWithComment,
     handleAddComment,
     handleCommentModalClose
-  } = useCommentLogic(projectId, setProject, handleDocumentUpload, setError);
+  } = useCommentLogic(projectId, setProject, handleDocumentUpload, setError, loadProjectDetails);
 
 
   // --- Derived State & Handlers ---
@@ -615,6 +617,8 @@ const ProjectDetail = () => {
                 onUpload={handleDocumentUpload}
                 onUploadWithComment={handleDraftMapUploadWithComment}
                 onDelete={handleDocumentDelete}
+                onReplaceAtIndex={handleDocumentReplaceAtIndex}
+                onDeleteAtIndex={handleDocumentDeleteAtIndex}
                 onEdit={handleDocumentEdit}
                 isUploading={docUploadState.key === slot.key}
                 isDeleting={docDeleteState.key === slot.key}

@@ -1,7 +1,16 @@
+// src/components/common/UserAvatar.jsx
 import PropTypes from "prop-types";
 
 /**
- * UserAvatar component displays a user's avatar or their initials if no avatar is available
+ * UserAvatar - Displays a user's avatar image or initials
+ * 
+ * Falls back to initials if no image is provided.
+ * Uses a consistent, name-based color algorithm to generate background colors.
+ * 
+ * @param {object} props
+ * @param {string} props.name - User's display name (used for initials and color)
+ * @param {number} [props.size=40] - Avatar diameter in pixels
+ * @param {string} [props.image] - Optional image URL for the avatar
  */
 const UserAvatar = ({ name, size = 40, image = null }) => {
   // Generate initials from name

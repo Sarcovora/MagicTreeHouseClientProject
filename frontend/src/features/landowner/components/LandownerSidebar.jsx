@@ -1,3 +1,4 @@
+// src/features/landowner/components/LandownerSidebar.jsx
 import { useState } from "react";
 import {
   TreePine,
@@ -13,6 +14,11 @@ import TreeFolks from "../../../assets/icons/treefolks.svg?react";
 import UserAvatar from "../../../components/common/UserAvatar";
 import { useAuth } from "../../auth/AuthProvider";
 
+/**
+ * LandownerSidebar - Main navigation sidebar for the landowner dashboard
+ * 
+ * Simplified version of AdminSidebar with landowner-specific links.
+ */
 const LandownerSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();

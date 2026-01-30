@@ -402,6 +402,137 @@ const handleAddDraftMapComment = asyncHandler(async (req, res) => {
     }
 });
 
+/**
+ * Handles replacing a specific document at an index within a multi-file slot.
+ * Admin only - used for Final Map individual file replacement.
+ */
+const handleReplaceProjectDocumentAtIndex = asyncHandler(async (req, res) => {
+    const { recordId, documentType, index } = req.params;
+    const { filename, contentType, data } = req.body || {};
+
+    // --- Permission Check: Admin only ---
+    if (!req.user?.admin) {
+        return res.status(403).json({ message: "Only admins can replace individual documents." });
+    }
+
+    if (!recordId) {
+        return res.status(400).json({ message: 'Record ID parameter is required.' });
+    }
+    if (!documentType) {
+        return res.status(400).json({ message: 'documentType is required.' });
+    }
+    if (!data) {
+        return res.status(400).json({ message: 'File data is required.' });
+    }
+
+    const parsedIndex = parseInt(index, 10);
+    if (isNaN(parsedIndex) || parsedIndex < 0) {
+        return res.status(400).json({ message: 'Valid file index is required.' });
+    }
+
+    const safeName = sanitizeFilename(filename || `${documentType}-${Date.now()}`);
+    const cleanedContentType = contentType || 'application/octet-stream';
+
+    if (!cloudinaryService.isConfigured()) {
+        return res.status(500).json({ message: 'Cloudinary is not configured.' });
+    }
+
+    let cloudinaryAsset = null;
+
+    try {
+        const buffer = Buffer.from(data, 'base64');
+        const isPdf = cleanedContentType === 'application/pdf' || (filename && filename.toLowerCase().endsWith('.pdf'));
+        const resourceType = isPdf ? 'raw' : 'auto';
+
+        cloudinaryAsset = await cloudinaryService.uploadBuffer(buffer, {
+            folder: 'project-uploads',
+            filename: safeName,
+            resource_type: resourceType,
+        });
+
+        const attachmentUrl = cloudinaryAsset.secureUrl;
+
+        const updatedProject = await airtableService.replaceDocumentAtIndex(
+            recordId,
+            documentType,
+            parsedIndex,
+            {
+                url: attachmentUrl,
+                filename: filename || safeName,
+                contentType: cleanedContentType,
+            }
+        );
+
+        // Schedule cleanup of temp Cloudinary asset after Airtable hosts it
+        const deleteDelayMs = Number(process.env.CLOUDINARY_DELETE_DELAY_MS || 60000);
+        if (cloudinaryAsset.publicId) {
+            setTimeout(() => {
+                cloudinaryService.deleteAsset(cloudinaryAsset.publicId);
+            }, deleteDelayMs);
+        }
+
+        res.json({
+            success: true,
+            documentType,
+            index: parsedIndex,
+            project: updatedProject,
+        });
+    } catch (error) {
+        console.error(`Controller error replacing document at index ${parsedIndex} for ${recordId}:`, error);
+        if (cloudinaryAsset?.publicId) {
+            await cloudinaryService.deleteAsset(cloudinaryAsset.publicId);
+        }
+        res.status(error.statusCode || 500).json({ 
+            message: error.message || 'Failed to replace document at index.' 
+        });
+    }
+});
+
+/**
+ * Handles deleting a specific document at an index within a multi-file slot.
+ * Admin only - used for Final Map individual file deletion.
+ */
+const handleDeleteProjectDocumentAtIndex = asyncHandler(async (req, res) => {
+    const { recordId, documentType, index } = req.params;
+
+    // --- Permission Check: Admin only ---
+    if (!req.user?.admin) {
+        return res.status(403).json({ message: "Only admins can delete individual documents." });
+    }
+
+    if (!recordId) {
+        return res.status(400).json({ message: 'Record ID parameter is required.' });
+    }
+    if (!documentType) {
+        return res.status(400).json({ message: 'documentType is required.' });
+    }
+
+    const parsedIndex = parseInt(index, 10);
+    if (isNaN(parsedIndex) || parsedIndex < 0) {
+        return res.status(400).json({ message: 'Valid file index is required.' });
+    }
+
+    try {
+        const updatedProject = await airtableService.detachDocumentAtIndex(
+            recordId,
+            documentType,
+            parsedIndex
+        );
+
+        res.json({
+            success: true,
+            documentType,
+            index: parsedIndex,
+            project: updatedProject,
+        });
+    } catch (error) {
+        console.error(`Controller error deleting document at index ${parsedIndex} for ${recordId}:`, error);
+        res.status(error.statusCode || 500).json({ 
+            message: error.message || 'Failed to delete document at index.' 
+        });
+    }
+});
+
 module.exports = {
     handleGetAllSeasons,
     handleGetProjectsBySeason,
@@ -412,6 +543,8 @@ module.exports = {
     handleDeleteSeason,
     handleUploadProjectDocument,
     handleDeleteProjectDocument,
+    handleReplaceProjectDocumentAtIndex,
+    handleDeleteProjectDocumentAtIndex,
     handleGetLandownerProject,
     handleGetLandownerProjects,
     handleAddDraftMapComment,
