@@ -1,37 +1,111 @@
 # TreeFolks User Portal
 
-A full-stack application for tracking tree planting projects with Airtable integration.
+A full-stack application for tracking tree planting projects with Airtable integration, designed for TreeFolks.
 
-## Quick Start
-
-### Backend
-```bash
-cd backend
-npm install
-node server.js
-# Runs on http://localhost:3000
-```
+## 🚀 Tech Stack
 
 ### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-# Runs on http://localhost:5173
-```
+- **Framework**: React (Vite)
+- **Styling**: Tailwind CSS
+- **Authentication**: Firebase Client SDK
+- **State/API**: Standard React Hooks & Fetch
 
-## Project Structure
+### Backend
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Database/Integrations**: 
+  - Airtable (via `airtable` SDK)
+  - Firebase Admin SDK (Authentication & User Data)
+  - Cloudinary (Image Management)
+
+## 📂 Project Structure
 
 ```
 root/
 ├── backend/               # Node.js + Express API server
+│   ├── controllers/       # Request handlers
+│   ├── middleware/        # Auth & validation middleware
+│   ├── routes/            # API route definitions
+│   ├── services/          # External services (Airtable, Cloudinary)
+│   └── uploads/           # Temp storage for uploads
 ├── frontend/              # React + Vite application
-├── documentation/         # All project documentation
+│   ├── src/
+│   │   ├── components/    # Reusable UI components
+│   │   ├── features/      # Feature-specific modules (auth, admin, etc.)
+│   │   ├── services/      # API client services
+│   │   └── ...
+├── documentation/         # Project documentation files
+├── mock_data/             # Utilities/Config for local testing
 └── README.md             # This file
 ```
 
+## ⚡ Quick Start
+
+### Backend
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Set up Environment Variables:
+   Create a `.env` file in `backend/` with the following:
+   ```env
+   PORT=3000
+   
+   # Airtable Configuration
+   AIRTABLE_PAT=your_personal_access_token
+   AIRTABLE_BASE_ID=your_base_id
+   AIRTABLE_TABLE_ID=your_table_id
+   
+   # Firebase Admin
+   # JSON string of your service account key
+   FIREBASE_SERVICE_ACCOUNT_JSON={"type": "service_account", ...}
+   
+   # Cloudinary (If applicable)
+   CLOUDINARY_CLOUD_NAME=...
+   CLOUDINARY_API_KEY=...
+   CLOUDINARY_API_SECRET=...
+   ```
+4. Start the server:
+   ```bash
+   node server.js
+   ```
+   Runs on `http://localhost:3000`
+
+### Frontend
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+   Runs on `http://localhost:5173`
+
 ## 🔐 Authentication Workflow
-1. **Firebase project** – Enable Email/Password auth and Firestore. The client SDK is initialized in `frontend/src/firebase.js`; update the config there if you change Firebase projects.
-2. **Seed users** – Every signup creates a Firestore doc (`users/{uid}`) with `username`, `email`, and `isAdmin`. The UID `v0uqBwBApQVhBTLSaweNTonHnnH2` is whitelisted as the initial admin, but you can add more UIDs to `ADMIN_UIDS` in `firebase.js` or flip the `isAdmin` flag directly in Firestore.
-3. **Backend verification** – Set `FIREBASE_SERVICE_ACCOUNT_JSON` so the Express API can verify `Authorization: Bearer <idToken>` headers. All routes require authentication; mutating routes additionally require `isAdmin`.
-4. **Handoff** – Grant future developers Owner access in Firebase console and share `.env` files/service-account JSON so they can maintain auth without touching end-user credentials.
+
+1. **Firebase Project**: The app uses Firebase Auth (Email/Password) and Firestore.
+   - Client Config: `frontend/src/firebase.js` (Update this if changing projects).
+   - Backend Config: Uses `FIREBASE_SERVICE_ACCOUNT_JSON` environment variable.
+
+2. **User Data**:
+   - Users are stored in Firestore `users/{uid}` collection.
+   - Fields: `username`, `email`, `isAdmin` (boolean).
+   - **Initial Admin**: The UID `v0uqBwBApQVhBTLSaweNTonHnnH2` is hardcoded as a seed admin in `frontend/src/firebase.js`.
+
+3. **Backend Verification**:
+   - All API routes in `backend/routes/airtableRoutes.js` are protected via `authenticateRequest` middleware.
+   - Admin-only routes (POST, DELETE, PATCH) are further protected by `requireAdmin`.
+
+## 🛠️ Mock Data & Testing
+
+- The `mock_data` directory contains an `.env` file that can be used for reference or by local utility scripts.
+- When running locally, ensure your backend `.env` is properly configured to avoid API errors.

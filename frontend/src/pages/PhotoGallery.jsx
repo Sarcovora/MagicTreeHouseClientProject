@@ -6,9 +6,9 @@
  *
  * Features:
  * - Lazy-loaded image grid
- * - Keyword search filter
+ * - Keyword search filter for titles and descriptions
  * - Upload button (redirects to upload page)
- * - Lightbox integration
+ * - Lightbox integration for viewing interactions
  */
 
 import { useState, useEffect, useMemo } from "react";
@@ -23,6 +23,10 @@ import {
 import apiService from "../services/apiService";
 import Lightbox from "../components/common/Lightbox";
 
+/**
+ * Main PhotoGallery Component
+ * @returns {JSX.Element} The rendered PhotoGallery page
+ */
 const PhotoGallery = () => {
   // --- State ---
   const [photos, setPhotos] = useState([]);
@@ -41,6 +45,7 @@ const PhotoGallery = () => {
   /**
    * Fetch all photos on component mount.
    * This retrieves photos from all projects visible to the user.
+   * Aggregates photos from various fields (planting, before, property).
    */
   useEffect(() => {
     const fetchPhotos = async () => {
@@ -93,6 +98,7 @@ const PhotoGallery = () => {
   /**
    * Filter photos based on search term.
    * Memoized to prevent re-filtering on every render.
+   * Checks title, description, and raw filename.
    */
   const filteredPhotos = useMemo(() => {
     if (!searchTerm) return photos;
@@ -107,6 +113,10 @@ const PhotoGallery = () => {
 
   // --- Handlers ---
 
+  /**
+   * Opens the lightbox at the specified index.
+   * @param {number} index - Index of the photo in the filtered list
+   */
   const openLightbox = (index) => {
     if (index >= 0 && index < filteredPhotos.length) {
       setSelectedPhotoIndex(index);
@@ -114,11 +124,18 @@ const PhotoGallery = () => {
     }
   };
 
+  /**
+   * Closes the lightbox and resets selection.
+   */
   const closeLightbox = () => {
     setLightboxOpen(false);
     setSelectedPhotoIndex(null);
   };
 
+  /**
+   * Handles navigation within the lightbox.
+   * @param {number} newIndex - The new index to display
+   */
   const handleNavigateLightbox = (newIndex) => {
     setSelectedPhotoIndex(newIndex);
   };
