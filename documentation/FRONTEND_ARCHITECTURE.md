@@ -196,8 +196,7 @@ frontend/
 │       │   └── pages/               # Admin pages
 │       │       ├── AdminDashboard.jsx     # Season cards (/admin/dashboard)
 │       │       ├── SeasonProjectList.jsx  # Projects list (/admin/seasons/:year)
-│       │       ├── ProjectDetail.jsx      # Project view (/admin/project/:id)
-│       │       └── FormDetail.jsx         # PDF form viewer
+│       │       └── ProjectDetail.jsx      # Project view (/admin/project/:id)
 │       │
 │       └── landowner/               # Landowner-only features
 │           ├── components/
@@ -360,8 +359,6 @@ function MyComponent() {
 | `/admin/dashboard` | `AdminDashboard.jsx` | Shows all seasons as cards. Click a season to see its projects. |
 | `/admin/seasons/25-26` | `SeasonProjectList.jsx` | Lists all projects for the "25-26" season as cards. |
 | `/admin/project/rec123` | `ProjectDetail.jsx` | Full project view with photos, documents, landowner info, timeline. |
-| `/admin/forms` | `Forms.jsx` | List of downloadable PDF forms. |
-| `/admin/forms/:id` | `FormDetail.jsx` | View a specific form PDF. |
 | `/admin/gallery` | `PhotoGallery.jsx` | Photo gallery across all projects. |
 | `/admin/map` | `Map.jsx` | Map view of project locations. |
 | `/admin/account` | `AccountPage.jsx` | User account settings. |
@@ -372,7 +369,6 @@ function MyComponent() {
 |-----|-----------|-------------|
 | `/landowner/dashboard` | `LandownerDashboard.jsx` | Redirects to their project or shows project selector. |
 | `/landowner/project/rec123` | `ProjectDetail.jsx` | Their project view (same component as admin, with fewer permissions). |
-| `/landowner/forms` | `Forms.jsx` | Same forms page as admin. |
 | `/landowner/gallery` | `PhotoGallery.jsx` | Photo gallery. |
 | `/landowner/map` | `Map.jsx` | Map view. |
 | `/landowner/account` | `AccountPage.jsx` | Account settings. |
