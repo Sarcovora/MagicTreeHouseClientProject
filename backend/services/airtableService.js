@@ -69,16 +69,17 @@ const FIELD_DEFINITIONS = [
     { api: 'city', airtable: 'City' },
     { api: 'zipCode', airtable: 'Zip Code' },
     { api: 'county', airtable: 'County' },
-    
+
     // Project Details
     { api: 'season', airtable: 'Season' },
     { api: 'status', airtable: 'Current Status' },
     { api: 'landRegion', airtable: 'Land Region' },
     { api: 'propertyId', airtable: 'Property ID Number(s)' },
     { api: 'siteNumber', airtable: 'Site Number' },
-    
+
     // Dates
-    { api: 'Initial Contact Date', airtable: 'Initial Contact Date' },
+    // { api: 'Initial Contact Date', airtable: 'Initial Contact Date' },
+        { api: 'contactDate', airtable: 'Contact Date' },
     { api: 'consultationDate', airtable: 'Consultation Date' },
     { api: 'flaggingDate', airtable: 'Flagging Date' },
     { api: 'plantingDate', airtable: 'Planting Date' },
@@ -100,7 +101,7 @@ const FIELD_DEFINITIONS = [
     { api: 'draftMapUrl', airtable: 'Draft Map' },
     { api: 'finalMapUrl', airtable: 'Final Map' },
     { api: 'replantingMapUrl', airtable: 'Replanting Map' },
-    
+
     // Attachments / Collections
     { api: 'otherAttachments', airtable: 'Other Attachments' },
     { api: 'activeCarbonShapefiles', airtable: 'Active Carbon Shapefiles' },
@@ -154,7 +155,7 @@ const processRecord = (record) => {
             if (Array.isArray(value) && value[0]?.url) {
                 // Determine if this is a "Photo" field that expects simple string URLs (for backward comp with Carousel)
                 const isPhotoField = ['plantingPhotoUrls', 'beforePhotoUrls', 'propertyImageUrls'].includes(apiKey);
-                
+
                 if (isPhotoField) {
                      processed[apiKey] = value.map(att => ({
                          url: att.url,
@@ -166,12 +167,12 @@ const processRecord = (record) => {
                      // For Documents (Maps, Docs, Shapefiles), return full metadata for intelligent handling (versioning, types)
                      // Always return as Array of objects
                      processed[apiKey] = value.map(att => ({
-                         url: att.url, 
-                         filename: att.filename, 
+                         url: att.url,
+                         filename: att.filename,
                          id: att.id,
                          type: att.type
                      }));
-                     
+
                      // For backward compatibility (if any logic expects a single property not array),
                      // we might need to handle single-value fields, but our frontend ensuresArray mostly.
                      // The only potential break is if frontend accesses project.draftMapUrl direct expecting a string.
@@ -303,10 +304,10 @@ const getProjectDetails = async (recordId) => {
 
 const findProjectByEmail = async (email) => {
     if (!email) throw new Error('Email is required to find project.');
-    
+
     const normalizedEmail = email.toLowerCase().trim();
     console.log(`Searching for project with email: ${normalizedEmail}`);
-    
+
     // Escape email for Airtable formula to prevent injection/formula breakage
     const emailField = FIELD_MAP.apiToAirtable.email || 'Email';
     const escapedEmail = escapeFormulaValue(normalizedEmail);
@@ -324,9 +325,9 @@ const findProjectByEmail = async (email) => {
             console.log(`No project found for email: ${normalizedEmail}`);
             return null;
         }
-        
+
         const foundRecord = processRecord(records[0]);
-        
+
         // CRITICAL: Post-fetch verification to prevent data leaks
         // Double-check that the returned record's email actually matches
         const recordEmail = (foundRecord.email || '').toLowerCase().trim();
@@ -334,7 +335,7 @@ const findProjectByEmail = async (email) => {
             console.error(`DATA LEAK PREVENTED: Requested email '${normalizedEmail}' but Airtable returned record with email '${recordEmail}'. Record ID: ${foundRecord.id}`);
             return null;
         }
-        
+
         return foundRecord;
     } catch (error) {
         console.error(`Error finding project by email ${normalizedEmail}:`, error);
@@ -350,10 +351,10 @@ const findProjectByEmail = async (email) => {
  */
 const findAllProjectsByEmail = async (email) => {
     if (!email) throw new Error('Email is required to find projects.');
-    
+
     const normalizedEmail = email.toLowerCase().trim();
     console.log(`Searching for ALL projects with email: ${normalizedEmail}`);
-    
+
     const emailField = FIELD_MAP.apiToAirtable.email || 'Email';
     const escapedEmail = escapeFormulaValue(normalizedEmail);
     const filterFormula = `LOWER({${emailField}}) = "${escapedEmail}"`;
@@ -362,7 +363,7 @@ const findAllProjectsByEmail = async (email) => {
 
     try {
         const allRecords = [];
-        
+
         await new Promise((resolve, reject) => {
             table.select({
                 filterByFormula: filterFormula,
@@ -444,7 +445,7 @@ const addSeasonOption = async (newSeasonName) => {
     }
 
     const existingChoices = seasonField.options?.choices ?? [];
-    
+
     // Check for duplicates (case-insensitive)
     const normalizedNewName = trimmedSeason.toLowerCase();
     const exists = existingChoices.some(choice => choice.name.trim().toLowerCase() === normalizedNewName);
@@ -475,7 +476,7 @@ const addSeasonOption = async (newSeasonName) => {
     try {
         console.log('Metadata Field PATCH payload for adding season:', JSON.stringify(metadataPayload, null, 2));
         await metadataApi.patch(`/tables/${targetTable.id}/fields/${seasonField.id}`, metadataPayload);
-        
+
         console.log(`Season option '${trimmedSeason}' added to Airtable.`);
         return {
             success: true,
@@ -636,7 +637,7 @@ const deleteSeasonOption = async (seasonName) => {
         const ownerNameField = FIELD_MAP.apiToAirtable.ownerLastName || 'Owner Last Name or Site Name';
         const seasonFormula = buildSeasonFilterFormula(trimmedSeason);
         const filterFormula = seasonFormula;
-        
+
         existingRecords = await table.select({
             maxRecords: 1,
             filterByFormula: filterFormula,
@@ -743,7 +744,7 @@ const deleteSeasonOption = async (seasonName) => {
 
     try {
         // Attempt 2 Revision: Include 'name' and 'type' in the payload.
-        // Even for PATCH, Airtable Metadata API often complains if 'name' is missing, 
+        // Even for PATCH, Airtable Metadata API often complains if 'name' is missing,
         // or treats it as an "unknown" request if key identifiers are absent.
         const metadataPayload = {
             name: seasonField.name,
@@ -752,7 +753,7 @@ const deleteSeasonOption = async (seasonName) => {
             options: updatedOptions,
         };
         console.log('Metadata Field PATCH payload:', JSON.stringify(metadataPayload, null, 2));
-        
+
         // Target the specific FIELD endpoint
         await metadataApi.patch(`/tables/${targetTable.id}/fields/${seasonField.id}`, metadataPayload);
 
@@ -897,12 +898,12 @@ const detachDocumentFromProject = async (recordId, documentType) => {
     const fieldName = await resolveAttachmentFieldName(documentType);
     try {
         let updateValue = []; // Default to clearing the field
-        
+
         // Handling for versioned documents (Draft Map)
         if (documentType === 'draftMap') {
              const currentRecord = await table.find(recordId);
              const currentFieldValue = currentRecord?.get(fieldName);
-             
+
              if (Array.isArray(currentFieldValue) && currentFieldValue.length > 0) {
                  // Remove the last item (newest version)
                  const keptAttachments = currentFieldValue.slice(0, -1);
@@ -938,7 +939,7 @@ const detachDocumentFromProject = async (recordId, documentType) => {
 /**
  * Replaces a specific document at a given index within a document array field.
  * Used for individual file replacement in multi-file slots like Final Map.
- * 
+ *
  * @param {string} recordId - Airtable record ID
  * @param {string} documentType - Document type key (e.g., 'finalMap')
  * @param {number} index - Index of file to replace (0-based)
@@ -947,11 +948,11 @@ const detachDocumentFromProject = async (recordId, documentType) => {
  */
 const replaceDocumentAtIndex = async (recordId, documentType, index, attachment) => {
     const fieldName = await resolveAttachmentFieldName(documentType);
-    
+
     if (!attachment?.url) {
         throw createServiceError('Attachment URL is required.', 400);
     }
-    
+
     if (typeof index !== 'number' || index < 0) {
         throw createServiceError('Valid index is required.', 400);
     }
@@ -960,15 +961,15 @@ const replaceDocumentAtIndex = async (recordId, documentType, index, attachment)
         // Fetch current record to get existing attachments
         const currentRecord = await table.find(recordId);
         const currentFieldValue = currentRecord?.get(fieldName);
-        
+
         if (!Array.isArray(currentFieldValue) || currentFieldValue.length === 0) {
             throw createServiceError('No documents exist in this slot to replace.', 400);
         }
-        
+
         if (index >= currentFieldValue.length) {
             throw createServiceError(`Index ${index} is out of bounds. Only ${currentFieldValue.length} file(s) exist.`, 400);
         }
-        
+
         // Build new attachments array: keep existing by ID except at index, insert new one
         const newAttachments = currentFieldValue.map((att, i) => {
             if (i === index) {
@@ -993,7 +994,7 @@ const replaceDocumentAtIndex = async (recordId, documentType, index, attachment)
         if (!updatedRecords || updatedRecords.length === 0) {
             throw new Error('Record update failed, no record returned.');
         }
-        
+
         return processRecord(updatedRecords[0]);
     } catch (error) {
         console.error(`Error replacing document at index ${index} (${documentType}) for record ${recordId}:`, error);
@@ -1007,7 +1008,7 @@ const replaceDocumentAtIndex = async (recordId, documentType, index, attachment)
 /**
  * Removes a specific document at a given index within a document array field.
  * Used for individual file deletion in multi-file slots like Final Map.
- * 
+ *
  * @param {string} recordId - Airtable record ID
  * @param {string} documentType - Document type key (e.g., 'finalMap')
  * @param {number} index - Index of file to remove (0-based)
@@ -1015,7 +1016,7 @@ const replaceDocumentAtIndex = async (recordId, documentType, index, attachment)
  */
 const detachDocumentAtIndex = async (recordId, documentType, index) => {
     const fieldName = await resolveAttachmentFieldName(documentType);
-    
+
     if (typeof index !== 'number' || index < 0) {
         throw createServiceError('Valid index is required.', 400);
     }
@@ -1024,15 +1025,15 @@ const detachDocumentAtIndex = async (recordId, documentType, index) => {
         // Fetch current record to get existing attachments
         const currentRecord = await table.find(recordId);
         const currentFieldValue = currentRecord?.get(fieldName);
-        
+
         if (!Array.isArray(currentFieldValue) || currentFieldValue.length === 0) {
             throw createServiceError('No documents exist in this slot to delete.', 400);
         }
-        
+
         if (index >= currentFieldValue.length) {
             throw createServiceError(`Index ${index} is out of bounds. Only ${currentFieldValue.length} file(s) exist.`, 400);
         }
-        
+
         // Build new attachments array excluding the one at index
         const newAttachments = currentFieldValue
             .filter((_, i) => i !== index)
@@ -1049,7 +1050,7 @@ const detachDocumentAtIndex = async (recordId, documentType, index) => {
         if (!updatedRecords || updatedRecords.length === 0) {
             throw new Error('Record update failed, no record returned.');
         }
-        
+
         return processRecord(updatedRecords[0]);
     } catch (error) {
         console.error(`Error removing document at index ${index} (${documentType}) from record ${recordId}:`, error);
