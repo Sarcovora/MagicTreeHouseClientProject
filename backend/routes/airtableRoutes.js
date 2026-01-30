@@ -42,8 +42,11 @@ router.post('/projects/:recordId/documents', airtableController.handleUploadProj
 // Delete a project document (attachments) - Permissions handled in controller
 router.delete('/projects/:recordId/documents/:documentType', airtableController.handleDeleteProjectDocument);
 
-// GET project associated with the logged-in landowner
+// GET project associated with the logged-in landowner (legacy - returns first match)
 router.get('/projects/my-project', airtableController.handleGetLandownerProject);
+
+// GET ALL projects associated with the logged-in landowner (supports multiple projects per email)
+router.get('/projects/my-projects', airtableController.handleGetLandownerProjects);
 
 // POST a comment to the draft map - Landowner interaction
 router.post('/projects/:recordId/draft-map/comments', airtableController.handleAddDraftMapComment);

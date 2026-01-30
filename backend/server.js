@@ -17,8 +17,8 @@ if (!fs.existsSync(uploadsDir)) {
 
 // --- Middleware ---
 app.use(cors()); // Allow requests from different origins (like your frontend)
-app.use(express.json({ limit: '15mb' })); // Parse incoming JSON requests
-app.use(express.urlencoded({ extended: true, limit: '15mb' })); // Parse URL-encoded requests
+app.use(express.json({ limit: '50mb' })); // Parse incoming JSON requests (larger limit for base64 encoded images)
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Parse URL-encoded requests
 app.use('/uploads', express.static(uploadsDir));
 
 // --- Cache Control Middleware ---

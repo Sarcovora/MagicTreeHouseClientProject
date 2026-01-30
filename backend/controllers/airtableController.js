@@ -40,15 +40,12 @@ const handleGetProjectDetails = asyncHandler(async (req, res, next) => {
                 return res.status(401).json({ message: "Unauthorized." });
             }
             
-            // We need to fetch the project first to check ownership (or use findProjectByEmail first)
-            // Option 1: Fetch details then check info. 
-            // Option 2: Use findProjectByEmail and compare IDs. (Safer if findProjectByEmail is robust)
+            // Use findAllProjectsByEmail to support landowners with multiple projects
+            const landownerProjects = await airtableService.findAllProjectsByEmail(req.user.email);
+            const hasAccess = landownerProjects.some(project => project.id === recordId);
             
-            const landownerProject = await airtableService.findProjectByEmail(req.user.email);
-            
-            if (!landownerProject || landownerProject.id !== recordId) {
-                 // Even if project exists, if it's not theirs, deny it.
-                 // We return 403.
+            if (!hasAccess) {
+                 // The requested project is not among user's projects
                  console.warn(`Unauthorized access attempt by ${req.user.email} for project ${recordId}`);
                  return res.status(403).json({ message: "Access denied. You do not have permission to view this project." });
             }
@@ -165,19 +162,32 @@ const handleGetLandownerProject = asyncHandler(async (req, res) => {
     }
 });
 
+// Returns ALL projects for the logged-in landowner (supports multiple projects per email)
+const handleGetLandownerProjects = asyncHandler(async (req, res) => {
+    if (!req.user || !req.user.email) {
+        return res.status(401).json({ message: "User email not found in token." });
+    }
+
+    const { email } = req.user;
+    try {
+        const projects = await airtableService.findAllProjectsByEmail(email);
+        if (!projects || projects.length === 0) {
+            return res.status(404).json({ message: "No projects found for this email." });
+        }
+        res.json(projects);
+    } catch (error) {
+        console.error(`Error fetching projects for email ${email}:`, error);
+        res.status(500).json({ message: "Failed to fetch landowner projects." });
+    }
+});
+
 const handleUploadProjectDocument = asyncHandler(async (req, res) => {
     const { recordId } = req.params;
     const { documentType, filename, contentType, data } = req.body || {};
 
     // --- Permission Check ---
     // If not admin, ensure they own the project AND are only uploading 'draftMap'
-    if (req.user && !req.user.admin) { // Assuming auth middleware sets req.user.admin or similar
-        // Note: req.userProfile might be set by requireAdmin, but for mixed routes we rely on token or lookup
-        // Ideally, we should fetch permission first.
-        // Let's assume non-admin users can ONLY touch their own project.
-        
-        // 1. Verify ownership if we haven't already (e.g., via middleware). 
-        // For simplicity, let's fetch the project by email and compare IDs
+    if (req.user && !req.user.admin) {
         if (!req.user.email) {
              return res.status(401).json({ message: "Unauthorized." });
         }
@@ -188,8 +198,10 @@ const handleUploadProjectDocument = asyncHandler(async (req, res) => {
             return res.status(403).json({ message: "Landowners can only edit the Draft Map or upload photos." });
         }
 
-        const project = await airtableService.findProjectByEmail(req.user.email);
-        if (!project || project.id !== recordId) {
+        // Use findAllProjectsByEmail to support landowners with multiple projects
+        const landownerProjects = await airtableService.findAllProjectsByEmail(req.user.email);
+        const hasAccess = landownerProjects.some(project => project.id === recordId);
+        if (!hasAccess) {
             return res.status(403).json({ message: "Access denied to this project." });
         }
     }
@@ -339,8 +351,6 @@ const handleAddDraftMapComment = asyncHandler(async (req, res) => {
     // User requested: "I want only the landwoner to be able to send comments to the admin."
     // Admin should view but NOT send.
     if (req.user && req.user.admin) {
-        // req.user.admin is likely boolean true/false.
-        // If checking strictly for admin attempting to POST:
         return res.status(403).json({ message: "Admins cannot post comments here." });
     }
     
@@ -348,8 +358,11 @@ const handleAddDraftMapComment = asyncHandler(async (req, res) => {
     if (!req.user || !req.user.email) {
         return res.status(401).json({ message: "Unauthorized." });
     }
-    const project = await airtableService.findProjectByEmail(req.user.email);
-    if (!project || project.id !== recordId) {
+    
+    // Use findAllProjectsByEmail to support landowners with multiple projects
+    const landownerProjects = await airtableService.findAllProjectsByEmail(req.user.email);
+    const hasAccess = landownerProjects.some(project => project.id === recordId);
+    if (!hasAccess) {
         return res.status(403).json({ message: "Access denied to this project." });
     }
     // --- End Permission Check ---
@@ -400,5 +413,6 @@ module.exports = {
     handleUploadProjectDocument,
     handleDeleteProjectDocument,
     handleGetLandownerProject,
+    handleGetLandownerProjects,
     handleAddDraftMapComment,
 };

@@ -343,6 +343,63 @@ const findProjectByEmail = async (email) => {
 };
 
 /**
+ * Finds ALL projects associated with a given email address.
+ * Used for landowners who may have multiple projects.
+ * @param {string} email - The email address to search for
+ * @returns {Promise<Array>} - Array of normalized project records
+ */
+const findAllProjectsByEmail = async (email) => {
+    if (!email) throw new Error('Email is required to find projects.');
+    
+    const normalizedEmail = email.toLowerCase().trim();
+    console.log(`Searching for ALL projects with email: ${normalizedEmail}`);
+    
+    const emailField = FIELD_MAP.apiToAirtable.email || 'Email';
+    const escapedEmail = escapeFormulaValue(normalizedEmail);
+    const filterFormula = `LOWER({${emailField}}) = "${escapedEmail}"`;
+
+    console.log(`Using filter formula: ${filterFormula}`);
+
+    try {
+        const allRecords = [];
+        
+        await new Promise((resolve, reject) => {
+            table.select({
+                filterByFormula: filterFormula,
+                fields: Object.keys(FIELD_MAP.airtableToApi),
+            }).eachPage(
+                (records, fetchNextPage) => {
+                    records.forEach((record) => {
+                        const processed = processRecord(record);
+                        // Verify email matches to prevent data leaks
+                        const recordEmail = (processed.email || '').toLowerCase().trim();
+                        if (recordEmail === normalizedEmail) {
+                            allRecords.push(processed);
+                        } else {
+                            console.warn(`DATA LEAK PREVENTED: Skipping record ${processed.id} with mismatched email`);
+                        }
+                    });
+                    fetchNextPage();
+                },
+                (err) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                }
+            );
+        });
+
+        console.log(`Found ${allRecords.length} projects for email: ${normalizedEmail}`);
+        return allRecords;
+    } catch (error) {
+        console.error(`Error finding all projects by email ${normalizedEmail}:`, error);
+        throw new Error(`Failed to find projects by email.`);
+    }
+};
+
+/**
  * Attempts to add a new season option by creating and deleting a dummy record.
  * Requires 'data.records:write' scope for the PAT.
  */
@@ -889,4 +946,5 @@ module.exports = {
     attachDocumentToProject,
     detachDocumentFromProject,
     findProjectByEmail,
+    findAllProjectsByEmail,
 };
