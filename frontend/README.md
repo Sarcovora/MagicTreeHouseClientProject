@@ -27,7 +27,6 @@ frontend/
 │   ├── pages/
 │   │   └── ...                     # Admin & landowner screens
 │   └── assets/                     # Icons, images, etc.
-├── test-api.html                   # Standalone API smoke-test page
 └── README.md                       # This file
 ```
 
@@ -72,21 +71,10 @@ function PropertyGallery({ recordId }) {
 }
 ```
 
-## 🧪 Testing
-
-### Interactive Test Page
-Open `test-api.html` in your browser to exercise the backend endpoints with a simple UI. This file uses `fetch` directly and is unaffected by the service cleanup.
-
 ## 📖 Documentation
 
 - **[Frontend API Guide](../documentation/FRONTEND_API_GUIDE.md)** - Complete guide with examples
 - **[Backend API Docs](../documentation/API_DOCUMENTATION.md)** - Backend API reference
-- **[Migration Guide](../documentation/MIGRATION_GUIDE.md)** - Migrate from old service
-- **[Documentation Index](../documentation/README.md)** - All docs
-
-## 🔄 Migration from Old Service
-
-If you still have code in feature branches that imported any of the removed helper files, migrate those calls to the functions exposed by `apiService.js`.
 
 ## ⚙️ Configuration
 
@@ -121,8 +109,3 @@ npm run lint         # Run ESLint
 
 - [React Documentation](https://react.dev/)
 - [Vite Documentation](https://vitejs.dev/)
-- [Project Changelog](../CHANGELOG.md)
-
----
-
-**Need help?** Check the [Frontend API Guide](../documentation/FRONTEND_API_GUIDE.md) for detailed examples.
