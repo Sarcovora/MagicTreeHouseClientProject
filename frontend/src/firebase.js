@@ -20,7 +20,8 @@ const firebaseConfig = {
 
 const ADMIN_UIDS = new Set([
   "v0uqBwBApQVhBTLSaweNTonHnnH2", // evan.kuo.edu@gmail.com
-  "y05pa1s0E1SOmUU9uOVUNdZehsw2"
+  "y05pa1s0E1SOmUU9uOVUNdZehsw2",
+  "z2bDySsDwLME8d86L9gweQ7IyWS2"
 ]);
 
 const app = initializeApp(firebaseConfig);
