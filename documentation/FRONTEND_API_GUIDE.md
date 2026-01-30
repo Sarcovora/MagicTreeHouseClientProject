@@ -1,13 +1,12 @@
-# Frontend API Guide - Magic Tree House
+# Frontend API Guide
 
 ## Table of Contents
 1. [Quick Start](#quick-start)
 2. [API Service (Vanilla JS)](#api-service-vanilla-js)
 3. [React Hooks](#react-hooks)
-4. [Complete Examples](#complete-examples)
-5. [Error Handling](#error-handling)
-6. [Caching](#caching)
-7. [TypeScript Support](#typescript-support)
+4. [Error Handling](#error-handling)
+5. [Caching](#caching)
+6. [TypeScript Support](#typescript-support)
 
 ---
 
