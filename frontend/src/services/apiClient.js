@@ -4,7 +4,7 @@ import { auth } from '../firebase';
 
 // --- Configuration ---
 const DEFAULT_API_BASE = import.meta.env.MODE === 'production'
-  ? 'https://tree-folks-user-portal-backend.vercel.app/'
+  ? 'https://tree-folks-user-portal-backend.vercel.app'
   : 'http://localhost:3000';
 const apiBaseFromEnv = (import.meta?.env?.VITE_API_BASE_URL || DEFAULT_API_BASE).replace(/\/$/, '');
 const apiPrefix = import.meta?.env?.VITE_API_PREFIX ?? '/api';
