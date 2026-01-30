@@ -17,6 +17,7 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
   const [penSize, setPenSize] = useState(3);
   const [penColor, setPenColor] = useState('#FF0000');
   const [pdfDimensions, setPdfDimensions] = useState({ width: 800, height: 600 });
+  const [originalDimensions, setOriginalDimensions] = useState(null); // Store original image size for high-res save
   const [isLoading, setIsLoading] = useState(false);
 
   const [pageAnnotations, setPageAnnotations] = useState({}); // Store annotations per page
@@ -162,6 +163,9 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
           width: finalWidth,
           height: finalHeight
       });
+      
+      // Store original dimensions for saving
+      setOriginalDimensions({ width: naturalWidth, height: naturalHeight });
   };
 
   const handleUndo = () => {
@@ -216,22 +220,29 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
   };
 
   const handleSaveImage = async (annotationsJson) => {
-      const { width, height } = pdfDimensions;
+      // Use original dimensions if available (for high quality), else fallback to current canvas size
+      const targetWidth = originalDimensions ? originalDimensions.width : pdfDimensions.width;
+      const targetHeight = originalDimensions ? originalDimensions.height : pdfDimensions.height;
+      
+      // Calculate scale factor (how much bigger is the original than the displayed canvas?)
+      const scaleFactor = originalDimensions ? (originalDimensions.width / pdfDimensions.width) : 1;
+
+      console.log(`Saving image. Original: ${targetWidth}x${targetHeight}, Display: ${pdfDimensions.width}x${pdfDimensions.height}, Scale: ${scaleFactor}`);
       
       const tempCanvasEl = document.createElement('canvas');
-      tempCanvasEl.width = width;
-      tempCanvasEl.height = height;
+      tempCanvasEl.width = targetWidth;
+      tempCanvasEl.height = targetHeight;
       
       const staticCanvas = new fabric.StaticCanvas(tempCanvasEl, {
-          width: width,
-          height: height
+          width: targetWidth,
+          height: targetHeight
       });
 
       // Load original image as background
       await new Promise((resolve, reject) => {
           fabric.FabricImage.fromURL(pdfUrl, { crossOrigin: 'anonymous' }).then((img) => {
-              // Scale image to match canvas if needed, but here we set canvas to match image
-              img.scaleToWidth(width);
+              // Scale image to match target dimensions (which should be its natural size)
+              img.scaleToWidth(targetWidth);
               staticCanvas.backgroundImage = img;
               staticCanvas.renderAll();
               resolve();
@@ -243,7 +254,21 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
           try {
               const enlivenedObjects = await fabric.util.enlivenObjects(annotationsJson.objects);
               enlivenedObjects.forEach((obj) => {
+                  // Scale the object position and size
+                  obj.left *= scaleFactor;
+                  obj.top *= scaleFactor;
+                  obj.scaleX *= scaleFactor;
+                  obj.scaleY *= scaleFactor;
+                  
+                  // Scale stroke width if it exists
+                  if (obj.strokeWidth) {
+                      obj.strokeWidth *= scaleFactor;
+                  }
+                  
+                  // Handle path objects specifically if needed, but scaleX/Y usually handles it.
+                  // Update coordinates
                   obj.setCoords();
+                  
                   staticCanvas.add(obj);
               });
               staticCanvas.renderAll();
@@ -253,7 +278,8 @@ const PdfEditor = ({ pdfUrl, isPdf: propIsPdf, onSave, onCancel }) => {
       }
 
       // Export to Blob
-      const dataUrl = staticCanvas.toDataURL({ format: 'png', quality: 0.9 });
+      // Use multiplier 1 since we sized the canvas to the target size already
+      const dataUrl = staticCanvas.toDataURL({ format: 'png', quality: 1.0 });
       const res = await fetch(dataUrl);
       const blob = await res.blob();
       

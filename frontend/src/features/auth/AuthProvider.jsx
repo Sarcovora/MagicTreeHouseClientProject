@@ -68,6 +68,9 @@ export const AuthProvider = ({ children }) => {
         setProfile(null);
         setUser(null);
       },
+      updateProfileState(updates) {
+        setProfile((prev) => ({ ...prev, ...updates }));
+      },
     }),
     [user, profile, loading]
   );

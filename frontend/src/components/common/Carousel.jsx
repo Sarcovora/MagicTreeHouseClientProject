@@ -1,7 +1,7 @@
 // src/components/common/Carousel.jsx
 import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, File, Download } from "lucide-react";
 
 /**
  * Lightweight image carousel that keeps controls inside the frame and
@@ -23,12 +23,23 @@ const Carousel = ({
     () => (Array.isArray(images) ? images.filter(Boolean) : []),
     [images]
   );
+
   const [activeIndex, setActiveIndex] = useState(0);
+  const [failedSlides, setFailedSlides] = useState(new Set());
 
   // Reset when the slide set changes (e.g., navigating to a different project).
   useEffect(() => {
     setActiveIndex(0);
-  }, [slides.length]);
+    setFailedSlides(new Set());
+  }, [slides.length, slides]); // Added slides dependency to reset on content change
+
+  const handleImageError = (index) => {
+    setFailedSlides((prev) => {
+      const newSet = new Set(prev);
+      newSet.add(index);
+      return newSet;
+    });
+  };
 
   if (slides.length === 0) {
     return null;
@@ -53,12 +64,33 @@ const Carousel = ({
       <div
         className={`${rounded} ${shadow} overflow-hidden bg-gray-100 ${aspectClass}`}
       >
-        <img
-          src={slides[activeIndex]}
-          alt={`carousel slide ${activeIndex + 1}`}
-          className={`h-full w-full object-cover ${onImageClick ? "cursor-pointer" : ""} ${imageClassName}`}
-          onClick={onImageClick ? handleImageClick : undefined}
-        />
+        {failedSlides.has(activeIndex) ? (
+          <div className="flex h-full w-full flex-col items-center justify-center bg-gray-100 text-gray-500">
+            <File className="mb-2 h-12 w-12 opacity-50" />
+            <p className="text-sm font-medium">Preview not available</p>
+            <a
+              href={slides[activeIndex]}
+              target="_blank"
+              rel="noreferrer"
+              download
+              className="mt-4 flex items-center rounded-lg bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-gray-50"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download File
+            </a>
+          </div>
+        ) : (
+          <img
+            src={slides[activeIndex]}
+            alt={`carousel slide ${activeIndex + 1}`}
+            className={`h-full w-full object-cover ${
+              onImageClick ? "cursor-pointer" : ""
+            } ${imageClassName}`}
+            onClick={onImageClick ? handleImageClick : undefined}
+            onError={() => handleImageError(activeIndex)}
+          />
+        )}
 
         {showArrows && slides.length > 1 && (
           <>

@@ -19,7 +19,7 @@ const AddProject = () => {
     status: 'Pending',
     location: '',
     address: '',
-    description: '',
+
     ownerFirstName: '',
     ownerDisplayName: '',
     contactEmail: '',
@@ -119,11 +119,11 @@ const AddProject = () => {
 
     // Prepare data for API
     const projectData = {
-      seasonYear: trim(formData.seasonYear),
+      season: trim(formData.seasonYear), // Backend expects 'season'
       status: formData.status,
       location: trim(formData.location),
       address: trim(formData.address),
-      description: trim(formData.description),
+
       ownerFirstName: ownerFirstName || null,
       ownerDisplayName: ownerDisplayName || null,
       landowner: primaryContactDisplayName,
@@ -302,19 +302,7 @@ const AddProject = () => {
           </div>
         </div>
 
-        {/* Description */}
-        <div className="border-t pt-4">
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Project Description</label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            rows={4}
-            placeholder="Describe the project goals, scope, and any relevant details..."
-            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-          ></textarea>
-        </div>
+
 
         {/* Activity Dates */}
         <div className="border-t pt-4">

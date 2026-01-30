@@ -80,11 +80,17 @@ const SeasonProjectList = () => {
     const normalizedName = nameCandidate.toLowerCase();
     const normalizedAddress = (project.address || "").toLowerCase();
     const normalizedLandowner = (project.landowner || "").toLowerCase();
+    const normalizedLocation = (project.location || "").toLowerCase();
+    const normalizedZip = (project.zipCode || "").toLowerCase();
+    const normalizedSiteNumber = String(project.siteNumber || "").toLowerCase();
 
     return (
       normalizedName.includes(searchValue) ||
       normalizedAddress.includes(searchValue) ||
-      normalizedLandowner.includes(searchValue)
+      normalizedLandowner.includes(searchValue) ||
+      normalizedLocation.includes(searchValue) ||
+      normalizedZip.includes(searchValue) ||
+      normalizedSiteNumber.includes(searchValue)
     );
   });
 
@@ -156,7 +162,7 @@ const SeasonProjectList = () => {
               <SearchBar
                   value={searchTerm}
                   onChange={setSearchTerm}
-                  placeholder={`Search projects within ${normalizedSeasonYear || seasonYear || ''} season...`}
+                  placeholder={`Search by name, site #, loc, or zip within ${normalizedSeasonYear || seasonYear || ''}...`}
               />
           </div>
        </div>

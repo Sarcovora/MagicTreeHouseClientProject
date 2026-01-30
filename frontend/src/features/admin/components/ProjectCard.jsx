@@ -14,14 +14,19 @@ const ProjectCard = ({ project }) => {
       <div className="p-4 flex flex-col gap-3 flex-1">
         <h3 className="font-medium text-lg text-gray-900">{displayName}</h3>
 
-        <div className="flex items-center text-gray-500 text-sm">
-          <MapPin className="w-4 h-4 mr-2" />
-          <span>{project.address || "No address provided"}</span>
+        <div className="flex flex-col gap-1 text-sm text-gray-500">
+          {project.siteNumber !== undefined && (
+            <div className="font-medium text-gray-700">
+              Site #{project.siteNumber}
+            </div>
+          )}
+          <div className="flex items-start">
+             <MapPin className="w-4 h-4 mr-2 mt-0.5 shrink-0" />
+             <span>
+               {[project.location, project.address, project.zipCode].filter(Boolean).join(", ") || "No address provided"}
+             </span>
+          </div>
         </div>
-
-        {project.description && (
-          <p className="text-gray-600 text-sm line-clamp-2">{project.description}</p>
-        )}
 
         <div className="pt-2 mt-auto">
           <Link

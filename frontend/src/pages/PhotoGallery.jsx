@@ -93,7 +93,12 @@ const PhotoGallery = () => {
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-            <h1 className="text-2xl font-bold whitespace-nowrap">Photo Gallery</h1>
+            <h1 className="text-2xl font-bold whitespace-nowrap">
+              Photo Gallery
+              <span className="ml-3 font-normal text-sm text-gray-500">
+                (Click photo to view)
+              </span>
+            </h1>
 
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full md:w-auto">
               <div className="relative flex-grow">

@@ -21,6 +21,15 @@ app.use(express.json({ limit: '15mb' })); // Parse incoming JSON requests
 app.use(express.urlencoded({ extended: true, limit: '15mb' })); // Parse URL-encoded requests
 app.use('/uploads', express.static(uploadsDir));
 
+// --- Cache Control Middleware ---
+app.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    next();
+});
+
 // --- Logging Middleware (Optional but helpful) ---
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);

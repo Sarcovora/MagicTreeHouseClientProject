@@ -216,9 +216,9 @@ const handleUploadProjectDocument = asyncHandler(async (req, res) => {
             const ownerName = currentProject.ownerLastName || currentProject.siteName || 'Project';
             const safeOwnerName = ownerName.replace(/[^a-zA-Z0-9]/g, '');
             
-            const existingAttachments = currentProject.draftMap || [];
-            // Version = count of existing attachments (0 if none exist, 1 if 1 exists, etc.)
-            const version = existingAttachments.length;
+            const existingAttachments = currentProject.draftMapUrl || [];
+            // Version = count of existing attachments + 1 (Version 1, Version 2, etc.)
+            const version = existingAttachments.length + 1;
             
             // finalFilename: OwnerName_DraftMap_vX.pdf
             // We assume the extension from the original filename or contentType

@@ -56,92 +56,78 @@ const resolveAttachmentFieldName = async (documentType) => {
 };
 
 // --- Field Mappings (Keep as is, used by other functions) ---
-const FIELD_MAP = {
-    // Input: API Key -> Output: Airtable Field Name or ID
-    apiToAirtable: {
-        title: 'UniqueID',
-        ownerFirstName: 'Owner First Name or Organization',
-        ownerLastName: 'Owner Last Name or Site Name', // Used for display name
-        address: 'Property Address',
-        plantingDate: 'Planting Date',
-        phone: 'Primary Phone Number',
-        email: 'Email',
-        season: 'Season', // Field name for filtering/creating
-        city: 'City',
-        zipCode: 'Zip Code',
-        county: 'County',
-        propertyId: 'Property ID Number(s)',
-        status: 'Current Status',
-        landRegion: 'Land Region',
-        contactDate: 'Contact Date',
-        consultationDate: 'Consultation Date',
-        flaggingDate: 'Flagging Date',
-        applicationDate: 'Application Date',
-        siteNumber: 'Site Number',
-        wetlandAcres: 'Wetland Acres',
-        uplandAcres: 'Upland Acres',
-        wetlandTrees: 'Wetland Trees',
-        uplandTrees: 'Upland Trees',
-        quizScorePreConsultation: 'Quiz Score - Pre-consult',
-        quizScorePostPlanting: 'Quiz Score - Post-planting',
-        initialMap: 'Initial Map',
-        draftMap: 'Draft Map',
-        finalMap: 'Final Map',
-        replantingMap: 'Replanting Map',
-        otherAttachments: 'Other Attachments',
-        activeCarbonShapefiles: 'Active Carbon Shapefiles',
-        plantingPhotos: 'Planting Photos',
-        propertyImages: 'Landowner Photo Submissions',
-        participationStatus: 'Participation status',
-        carbonDocs: 'Carbon docs (notarized)',
-        postPlantingReports: 'Post-Planting Reports',
-        draftMapComments: 'Draft Map Comments',
-    },
-    // Input: Airtable Field Name or ID -> Output: API Key
-    airtableToApi: {
-        'UniqueID': 'uniqueId', // Primary key, good to have
-        'Owner Last Name or Site Name': 'ownerDisplayName',
-        'Owner First Name or Organization': 'ownerFirstName',
-        'Property Address': 'address',
-        'Planting Date': 'plantingDate',
-        'Application Date': 'applicationDate',
-        //'Description of property and condition of riparian/floodplain area (by applicant)': 'description',
-        'Current Status': 'status',
-        'Season': 'season',
-        'City': 'city',
-        'Zip Code': 'zipCode',
-        'Property ID Number(s)': 'propertyId',
-        'County': 'county',
-        'Wetland Acres': 'wetlandAcres',
-        'Upland Acres': 'uplandAcres',
-        'Total Acres': 'totalAcres',
-        'Wetland Trees': 'wetlandTrees',
-        'Upland Trees': 'uplandTrees',
-        'Total Trees': 'totalTrees',
-        'Primary Phone Number': 'phone',
-        'Email': 'email',
-        'Initial Map': 'initialMapUrl',
-        'Draft Map': 'draftMapUrl',
-        'Final Map': 'finalMapUrl',
-        'Replanting Map': 'replantingMapUrl',
-        'Other Attachments': 'otherAttachments',
-        'Active Carbon Shapefiles': 'activeCarbonShapefiles',
-        'Planting Photos': 'plantingPhotoUrls',
-        'Before Photos': 'beforePhotoUrls',
-        'Landowner Photo Submissions': 'propertyImageUrls',
-        'Land Region': 'landRegion',
-        'Contact Date': 'contactDate',
-        'Consultation Date': 'consultationDate',
-        'Flagging Date': 'flaggingDate',
-        'Site Number': 'siteNumber',
-        'Participation status': 'participationStatus',
-        'Quiz Score - Pre-consult': 'quizScorePreConsultation',
-        'Quiz Score - Post-planting': 'quizScorePostPlanting',
-        'Carbon docs (notarized)': 'carbonDocs',
-        'Post-Planting Reports': 'postPlantingReports',
-        'Draft Map Comments': 'draftMapComments',
-    }
+// --- Field Mappings ---
+// Single Source of Truth for Field Configuration
+const FIELD_DEFINITIONS = [
+    // Standard Identifiers & Contact Info
+    { api: 'uniqueId', airtable: 'UniqueID' },
+    { api: 'ownerFirstName', airtable: 'Owner First Name or Organization' },
+    { api: 'ownerDisplayName', airtable: 'Owner Last Name or Site Name' },
+    { api: 'address', airtable: 'Property Address' },
+    { api: 'phone', airtable: 'Primary Phone Number' },
+    { api: 'email', airtable: 'Email' },
+    { api: 'city', airtable: 'City' },
+    { api: 'zipCode', airtable: 'Zip Code' },
+    { api: 'county', airtable: 'County' },
+    
+    // Project Details
+    { api: 'season', airtable: 'Season' },
+    { api: 'status', airtable: 'Current Status' },
+    { api: 'landRegion', airtable: 'Land Region' },
+    { api: 'propertyId', airtable: 'Property ID Number(s)' },
+    { api: 'siteNumber', airtable: 'Site Number' },
+    
+    // Dates
+    { api: 'initialContactDate', airtable: 'Initial Contact Date' },
+    { api: 'consultationDate', airtable: 'Consultation Date' },
+    { api: 'flaggingDate', airtable: 'Flagging Date' },
+    { api: 'plantingDate', airtable: 'Planting Date' },
+    { api: 'applicationDate', airtable: 'Application Date' },
+
+    // Metrics
+    { api: 'wetlandAcres', airtable: 'Wetland Acres' },
+    { api: 'uplandAcres', airtable: 'Upland Acres' },
+    { api: 'totalAcres', airtable: 'Total Acres' },
+    { api: 'wetlandTrees', airtable: 'Wetland Trees' },
+    { api: 'uplandTrees', airtable: 'Upland Trees' },
+    { api: 'totalTrees', airtable: 'Total Trees' },
+    { api: 'quizScorePreConsultation', airtable: 'Quiz Score - Pre-consult' },
+    { api: 'quizScorePostPlanting', airtable: 'Quiz Score - Post-planting' },
+    { api: 'participationStatus', airtable: 'Participation status' },
+
+    // Maps & Documents (Using Url suffix to match Read logic and Attachment handling)
+    { api: 'initialMapUrl', airtable: 'Initial Map' },
+    { api: 'draftMapUrl', airtable: 'Draft Map' },
+    { api: 'finalMapUrl', airtable: 'Final Map' },
+    { api: 'replantingMapUrl', airtable: 'Replanting Map' },
+    
+    // Attachments / Collections
+    { api: 'otherAttachments', airtable: 'Other Attachments' },
+    { api: 'activeCarbonShapefiles', airtable: 'Active Carbon Shapefiles' },
+    { api: 'plantingPhotoUrls', airtable: 'Planting Photos' },
+    { api: 'beforePhotoUrls', airtable: 'Before Photos' },
+    { api: 'propertyImageUrls', airtable: 'Landowner Photo Submissions' },
+    { api: 'carbonDocs', airtable: 'Carbon docs (notarized)' },
+    { api: 'postPlantingReports', airtable: 'Post-Planting Reports' },
+    { api: 'draftMapComments', airtable: 'Draft Map Comments' },
+];
+
+const buildFieldMaps = () => {
+    const apiToAirtable = {};
+    const airtableToApi = {};
+
+    FIELD_DEFINITIONS.forEach(def => {
+        const { airtable, api } = def;
+        if (airtable && api) {
+            airtableToApi[airtable] = api;
+            apiToAirtable[api] = airtable;
+        }
+    });
+
+    return { apiToAirtable, airtableToApi };
 };
+
+const FIELD_MAP = buildFieldMaps();
 
 const DOCUMENT_FIELD_MAP = {
     carbonDocs: FIELD_MAP.apiToAirtable.carbonDocs || 'Carbon docs (notarized)',
@@ -170,7 +156,12 @@ const processRecord = (record) => {
                 const isPhotoField = ['plantingPhotoUrls', 'beforePhotoUrls', 'propertyImageUrls'].includes(apiKey);
                 
                 if (isPhotoField) {
-                     processed[apiKey] = value.map(att => att.url);
+                     processed[apiKey] = value.map(att => ({
+                         url: att.url,
+                         thumbnail: att.thumbnails?.large?.url || att.thumbnails?.small?.url || att.url,
+                         filename: att.filename,
+                         type: att.type
+                     }));
                 } else {
                      // For Documents (Maps, Docs, Shapefiles), return full metadata for intelligent handling (versioning, types)
                      // Always return as Array of objects
@@ -274,11 +265,9 @@ const getProjectsBySeason = async (season) => {
         }).eachPage(
             (records, fetchNextPage) => {
                 records.forEach((record) => {
-                    // Skip dummy records if they somehow persist
-                    if (record.get('Owner Last Name or Site Name') !== '--- SEASON DUMMY RECORD ---') {
-                        projects.push(processRecord(record));
-                    }
+                    projects.push(processRecord(record));
                 });
+
                 fetchNextPage(); // IMPORTANT: Call this to get the next page
             },
             (err) => {
@@ -301,11 +290,7 @@ const getProjectDetails = async (recordId) => {
         if (!record) {
             throw new Error('Project not found.');
         }
-        // Optional: Check if it's the dummy record before processing
-        if (record.get('Owner Last Name or Site Name') === '--- SEASON DUMMY RECORD ---') {
-            console.warn(`Attempted to fetch details for a dummy record: ${recordId}`);
-            throw new Error('Project not found.'); // Treat dummy as not found
-        }
+
         return processRecord(record);
     } catch (error) {
         console.error(`Error fetching project details for ${recordId}:`, error);
@@ -362,74 +347,91 @@ const findProjectByEmail = async (email) => {
  * Requires 'data.records:write' scope for the PAT.
  */
 const addSeasonOption = async (newSeasonName) => {
-    let dummyRecordId = null;
+    const trimmedSeason = String(newSeasonName || '').trim();
+    if (!trimmedSeason) {
+        throw createServiceError('Season name is required to add option.', 400);
+    }
+
+    console.log(`Attempting to add season option '${trimmedSeason}' via Metadata API...`);
+
+    let targetTable;
+    let seasonField;
+
     try {
-        console.log(`Attempting to add season '${newSeasonName}' via dummy record workaround...`);
+        const response = await metadataApi.get(`/tables`);
+        const tablesData = response?.data?.tables ?? [];
 
-        // Define fields for the dummy record. Include MINIMUM required fields.
-        // **Crucially, include fields needed for the UniqueID formula**
-        const dummyRecordFields = {
-            // The new season name is the key part
-            [FIELD_MAP.apiToAirtable.season || 'Season']: newSeasonName,
+        targetTable = tablesData.find(t => t.id === AIRTABLE_TABLE_ID) ||
+            tablesData.find(t => t.name === "Application, status, and GIS data");
 
-            // Placeholders for fields required by UniqueID formula or table rules
-            [FIELD_MAP.apiToAirtable.ownerLastName || 'Owner Last Name or Site Name']: '--- SEASON DUMMY RECORD ---',
-            [FIELD_MAP.apiToAirtable.propertyId || 'Property ID Number(s)']: 'DUMMY',
-            [FIELD_MAP.apiToAirtable.siteNumber || 'Site Number']: 0, // Or another placeholder number
-
-            // Add any other fields marked as REQUIRED in your Airtable table settings
-            [FIELD_MAP.apiToAirtable.address || 'Property Address']: '--- DO NOT USE ---', // Likely required
-            // Intentionally omit description and other non-essential fields
-        };
-
-        console.log('Creating dummy record with fields:', dummyRecordFields);
-
-        // Create the dummy record
-        const createdRecords = await table.create([{ fields: dummyRecordFields }], { typecast: true });
-
-        if (!createdRecords || createdRecords.length === 0) {
-            throw new Error('Dummy record creation failed, no record returned.');
-        }
-        dummyRecordId = createdRecords[0].id;
-        console.log(`Successfully created dummy record ID: ${dummyRecordId} for season '${newSeasonName}'`);
-
-        // Immediately delete the dummy record
-        console.log(`Deleting dummy record ID: ${dummyRecordId}`);
-        const deletedRecord = await table.destroy(dummyRecordId);
-
-        // Check if deletion was successful (optional, destroy returns the deleted record)
-        if (deletedRecord?.id !== dummyRecordId) {
-            console.warn(`Potential issue deleting dummy record ${dummyRecordId}. Manual check may be needed.`);
-        } else {
-            console.log(`Successfully deleted dummy record ID: ${dummyRecordId}`);
+        if (!targetTable) {
+            throw createServiceError(
+                `Table with ID ${AIRTABLE_TABLE_ID} or name 'Application, status, and GIS data' not found in metadata.`,
+                500
+            );
         }
 
-        return { message: `Season option '${newSeasonName}' potentially added via dummy record. Please verify in Airtable UI.` };
-
+        seasonField = targetTable.fields.find(f => f.id === AIRTABLE_SEASON_FIELD_ID || f.name === SEASON_FIELD_NAME);
+        if (!seasonField) {
+            throw createServiceError(
+                `'Season' field (ID: ${AIRTABLE_SEASON_FIELD_ID} or name '${SEASON_FIELD_NAME}') not found in table ${targetTable.id}.`,
+                500
+            );
+        }
     } catch (error) {
-        console.error(`Error in dummy record workaround for season '${newSeasonName}':`, error);
+        console.error(`Error fetching metadata for season addition '${trimmedSeason}':`, error.response?.data || error.message);
+        throw createServiceError(
+            `Failed to fetch Airtable metadata for season addition: ${error.message}`,
+            500
+        );
+    }
 
-        // Attempt to clean up the dummy record if creation succeeded but deletion failed
-        if (dummyRecordId) {
-            console.warn(`Attempting cleanup: Deleting potentially orphaned dummy record ${dummyRecordId}`);
-            try {
-                await table.destroy(dummyRecordId);
-                console.log(`Cleanup successful for dummy record ${dummyRecordId}`);
-            } catch (cleanupError) {
-                console.error(`Cleanup failed for dummy record ${dummyRecordId}:`, cleanupError);
-                // Log this prominently - requires manual deletion in Airtable
-                console.error(`!!! MANUAL ACTION REQUIRED: Delete dummy record ${dummyRecordId} in Airtable !!!`);
-            }
-        }
-        // Rethrow a user-friendly error
-        const errMsg = error.message || 'Unknown error during season add workaround.';
-        if (errMsg.includes('INVALID_VALUE_FOR_COLUMN')) {
-            throw new Error(`Failed to add season: Invalid value for a required field in dummy record. ${errMsg}`);
-        }
-        if (errMsg.includes('INVALID_MULTIPLE_CHOICE_OPTION')) { // Or similar for select
-            throw new Error(`Failed to add season: '${newSeasonName}' might already exist or is invalid. ${errMsg}`);
-        }
-        throw new Error(`Failed to add season option using workaround: ${errMsg}`);
+    const existingChoices = seasonField.options?.choices ?? [];
+    
+    // Check for duplicates (case-insensitive)
+    const normalizedNewName = trimmedSeason.toLowerCase();
+    const exists = existingChoices.some(choice => choice.name.trim().toLowerCase() === normalizedNewName);
+
+    if (exists) {
+        console.log(`Season option '${trimmedSeason}' already exists. Skipping addition.`);
+        return { message: `Season option '${trimmedSeason}' already exists.` };
+    }
+
+    // Append new choice
+    // Note: We don't provide an ID for the new choice; Airtable generates it.
+    // We also don't include 'choiceOrder' to avoid messing up order for new items we don't have IDs for yet.
+    // However, Airtable requires we send ALL choices we want to keep.
+    const newChoice = { name: trimmedSeason };
+    const newChoices = [...existingChoices, newChoice];
+
+    const metadataPayload = {
+        name: seasonField.name,
+        type: seasonField.type,
+        description: seasonField.description ?? undefined,
+        options: {
+            choices: newChoices,
+             // We intentionally omit choiceOrder because we can't add the new ID to it yet.
+             // Airtable should append the new choice.
+        },
+    };
+
+    try {
+        console.log('Metadata Field PATCH payload for adding season:', JSON.stringify(metadataPayload, null, 2));
+        await metadataApi.patch(`/tables/${targetTable.id}/fields/${seasonField.id}`, metadataPayload);
+        
+        console.log(`Season option '${trimmedSeason}' added to Airtable.`);
+        return {
+            success: true,
+            season: trimmedSeason,
+            message: `Season option '${trimmedSeason}' added to Airtable.`
+        };
+    } catch (error) {
+        const responseData = error.response?.data;
+        console.error(`Error adding season option '${trimmedSeason}':`, responseData || error.message);
+        throw createServiceError(
+            `Failed to add season option '${trimmedSeason}': ${responseData?.error?.message || error.message}`,
+            error.response?.status || 500
+        );
     }
 };
 
@@ -576,8 +578,7 @@ const deleteSeasonOption = async (seasonName) => {
     try {
         const ownerNameField = FIELD_MAP.apiToAirtable.ownerLastName || 'Owner Last Name or Site Name';
         const seasonFormula = buildSeasonFilterFormula(trimmedSeason);
-        // Exclude dummy records from the count
-        const filterFormula = `AND(${seasonFormula}, {${ownerNameField}} != '--- SEASON DUMMY RECORD ---')`;
+        const filterFormula = seasonFormula;
         
         existingRecords = await table.select({
             maxRecords: 1,
@@ -837,10 +838,27 @@ const attachDocumentToProject = async (recordId, documentType, attachment) => {
 const detachDocumentFromProject = async (recordId, documentType) => {
     const fieldName = await resolveAttachmentFieldName(documentType);
     try {
+        let updateValue = []; // Default to clearing the field
+        
+        // Handling for versioned documents (Draft Map)
+        if (documentType === 'draftMap') {
+             const currentRecord = await table.find(recordId);
+             const currentFieldValue = currentRecord?.get(fieldName);
+             
+             if (Array.isArray(currentFieldValue) && currentFieldValue.length > 0) {
+                 // Remove the last item (newest version)
+                 const keptAttachments = currentFieldValue.slice(0, -1);
+                 // important: map back to the format Airtable expects for writing (array of objects with id, or partial)
+                 // Actually, writing back existing attachments just needs their ID or partial object.
+                 // Ideally, we map to { id: att.id } to be safe and efficient.
+                 updateValue = keptAttachments.map(att => ({ id: att.id }));
+             }
+        }
+
         const updatePayload = [{
             id: recordId,
             fields: {
-                [fieldName]: [],
+                [fieldName]: updateValue,
             },
         }];
 

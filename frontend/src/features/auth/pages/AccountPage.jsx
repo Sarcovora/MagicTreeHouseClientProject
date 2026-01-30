@@ -5,7 +5,7 @@ import { useAuth } from "../AuthProvider";
 import { useNavigate } from "react-router-dom";
 
 const AccountPage = () => {
-  const { user, profile, isAdmin, signOut } = useAuth();
+  const { user, profile, isAdmin, signOut, updateProfileState } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState(profile?.username ?? "");
   const [statusMessage, setStatusMessage] = useState("");
@@ -34,6 +34,9 @@ const AccountPage = () => {
         username: username.trim(),
         updatedAt: serverTimestamp(),
       });
+      // Update local state immediately so sidebar reflects changes
+      updateProfileState({ username: username.trim() });
+      
       setStatusMessage("Profile updated successfully.");
       setStatusType("success");
     } catch (error) {

@@ -16,7 +16,7 @@ const EditProject = () => {
     landownerPhone: '',
     location: '', // General location/area
     address: '', // Specific address
-    description: '',
+
     status: '', // Default status
     seasonYear: '', // Pre-select if available
     image: '', // Text input for image path for now
@@ -59,7 +59,7 @@ const EditProject = () => {
             landownerPhone: projectData.contact?.phone || '',
             location: projectData.location || '',
             address: projectData.address || '',
-            description: projectData.description || '',
+
             status: projectData.status || 'Pending',
             seasonYear: projectData.seasonYear || '',
             image: projectData.image || '',
@@ -118,17 +118,19 @@ const EditProject = () => {
     setIsLoading(true);
 
     const projectDataToUpdate = {
-      name: formData.name,
-      landowner: formData.landowner,
+      name: formData.name, // Note: 'name' might only be used for frontend cache updating if backend doesn't support it
+      ownerDisplayName: formData.landowner, // Updated to match backend key 'ownerDisplayName'
+      email: formData.landownerEmail, // specific contact fields must be top-level for backend
+      phone: formData.landownerPhone,
       contact: {
         email: formData.landownerEmail,
         phone: formData.landownerPhone,
       },
       location: formData.location,
       address: formData.address,
-      description: formData.description,
+
       status: formData.status,
-      seasonYear: formData.seasonYear,
+      season: formData.seasonYear, // Backend expects 'season'
       image: formData.image || null,
       metrics: formData.metrics,
     };
@@ -250,12 +252,6 @@ const EditProject = () => {
                 </div>
             </div>
         </div>
-
-         {/* Description */}
-         <div className="border-t pt-4">
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Project Description</label>
-            <textarea id="description" name="description" value={formData.description} onChange={handleInputChange} rows={4} placeholder="Describe the project goals, scope, and any relevant details..." className="w-full p-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"></textarea>
-         </div>
 
          {/* Other Details (Status, Image) */}
           <div className="border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">

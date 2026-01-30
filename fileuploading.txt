@@ -1,0 +1,32 @@
+Requirements for draft plan
+
+a) Should work for both pngs and imgs (test that we can edit and version them into the future)
+b) Test mixing and matching PNGS and imgs 
+c) Images should stay same size and resolution
+d) Loading should appear for everyone after uploading
+e) Naming is correct
+
+C
+
+a) Creating just adds a new version
+
+R
+
+b) Everyone should be able to read all versions
+
+U
+
+c) Updating is possible
+
+D
+
+d) Deletion only deletes the previous map.
+
+Edge classes
+
+a) What if someone uploads to the airtable with no version?
+b) What if someone uploads directly to the airtable that ends with v_1 instead of v_0?
+
+
+drawing
+a) all buttons used to draw should work as expected

@@ -1,5 +1,5 @@
 // src/features/admin/pages/ProjectDetail.jsx
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -13,6 +13,8 @@ import {
   User,
   MessageSquare,
   Image as ImageIcon,
+  FileText,
+  Download,
 } from "lucide-react";
 import Carousel from "../../../components/common/Carousel";
 import InfoCard from "../../../components/common/InfoCard";
@@ -37,6 +39,70 @@ const formatDate = (value) => {
     day: "numeric",
     year: "numeric",
   });
+};
+
+const isImage = (file) => {
+  if (!file) return false;
+  const url = typeof file === 'string' ? file : file.url;
+  if (!url) return false;
+  
+  const cleanUrl = url.split("?")[0].toLowerCase();
+  // Optimistic check: Assume likely image unless it has a known non-image extension
+  const knownNonImageExts = [
+    ".zip",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".csv",
+    ".txt",
+    ".rar",
+    ".7z",
+    ".tar",
+    ".gz",
+  ];
+  return !knownNonImageExts.some((ext) => cleanUrl.endsWith(ext));
+};
+
+const MediaGridItem = ({ photo, idx, openLightbox }) => {
+  const [hasError, setHasError] = useState(false);
+  const url = typeof photo === 'string' ? photo : photo.url;
+  const thumbnail = typeof photo === 'string' ? photo : (photo.thumbnail || photo.url);
+  const isImg = !hasError && isImage(url);
+
+  if (isImg) {
+    return (
+      <div
+        className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50"
+        onClick={() => openLightbox(url)}
+      >
+        <img
+          src={thumbnail}
+          alt={`Planting or before photo ${idx + 1}`}
+          className="h-24 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+          onError={() => setHasError(true)}
+          loading="lazy"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      download
+      className="flex h-24 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 p-2 text-center text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
+    >
+      <FileText className="mb-1 h-8 w-8 text-gray-400" />
+      <div className="flex items-center text-xs font-medium">
+        <Download className="mr-1 h-3 w-3" />
+        Download
+      </div>
+    </a>
+  );
 };
 
 const ensureText = (value, fallback = "Not provided") =>
@@ -205,9 +271,7 @@ const DocumentTile = ({
 
   const inputId = `upload-${slot.key}`;
   
-  // Use newest file (last one) for display checks in Draft Map
-  const primaryFile = slot.key === 'draftMap' ? files[files.length - 1] : files[0];
-  const { url: primaryUrl } = getFileInfo(primaryFile);
+  // (primaryFile logic moved below to respect selectedVersionIndex)
 
   const canEdit = slot.key === 'draftMap' && files.length > 0;
 
@@ -259,7 +323,7 @@ const DocumentTile = ({
             id={inputId}
             type="file"
             ref={fileInputRef}
-            className="sr-only"
+            className="hidden"
             onChange={handleFileChange}
             disabled={isUploading}
           />
@@ -268,10 +332,13 @@ const DocumentTile = ({
     );
   }
 
-  // Use the last file (newest) for Draft Map, first file for others
-  // Defined previously: primaryUrl from getFileInfo logic
-  // const primaryFile = slot.key === 'draftMap' ? files[files.length - 1] : files[0];
-  // const { url: primaryUrl } = getFileInfo(primaryFile);
+  // Use the selected version if available, otherwise the newest (last) for Draft Map, or first for others.
+  const indexToUse = selectedVersionIndex !== null 
+      ? selectedVersionIndex 
+      : (slot.key === 'draftMap' ? files.length - 1 : 0);
+      
+  const primaryFile = files[indexToUse];
+  const { url: primaryUrl } = getFileInfo(primaryFile);
 
   const isBusy = isUploading || isDeleting;
   const disabledLinkClass = isBusy ? "pointer-events-none opacity-60" : "";
@@ -307,7 +374,7 @@ const DocumentTile = ({
           >
             {files.map((_, index) => (
               <option key={index} value={index}>
-                {index === files.length - 1 ? 'Newest' : index === 0 ? 'Original' : `Version ${index}`}
+                Version {index + 1}
               </option>
             )).reverse()}
           </select>
@@ -381,7 +448,7 @@ const DocumentTile = ({
           id={inputId}
           type="file"
           ref={fileInputRef}
-          className="sr-only"
+          className="hidden"
           onChange={handleFileChange}
           disabled={isBusy}
         />
@@ -445,9 +512,9 @@ const PhotoUploadButton = ({ label, slotKey, onUpload, isUploading }) => {
       </button>
       <input
         type="file"
-        accept="image/*"
+        accept="image/*,.zip,application/zip,application/x-zip-compressed"
         ref={fileInputRef}
-        className="sr-only"
+        className="hidden"
         onChange={handleFileChange}
         disabled={isUploading}
       />
@@ -567,20 +634,58 @@ const ProjectDetail = () => {
     activeCarbonShapefiles.length > 0
       ? `${activeCarbonShapefiles.length} file${activeCarbonShapefiles.length === 1 ? "" : "s"} available`
       : "No shape files uploaded yet";
-  const carouselPhotos =
-    combinedPhotos.length > 0
-      ? combinedPhotos
-      : project?.image
-      ? [project.image]
-      : [];
+  // For Carousel, mapped to strings (high-res URLs)
+  const carouselImages = useMemo(() => {
+    return combinedPhotos.map(p => typeof p === 'string' ? p : p.url);
+  }, [combinedPhotos]);
+
+  const landownerImages = useMemo(() => {
+    return landownerPhotos.map(p => typeof p === 'string' ? p : p.url);
+  }, [landownerPhotos]);
+
+  // For Grid, we use the objects directly (preserving thumbnail info)
+  // No change needed for combinedPhotos itself if we update usage
+
 
   const handleDocumentUpload = async (slotKey, file) => {
     if (!projectId || !file) {
       return;
     }
+
+    // --- Versioning / Renaming Logic ---
+    // 1. Calculate next version index based on existing files
+    const existingFiles = ensureArray(project?.documents?.[slotKey] || project?.[slotKey] || []); 
+    // Note: fallback fields might need checking if documents[slotKey] is empty but legacy field has data. 
+    // However, resolvedDocumentSlots logic suggests we usually look at projectDocuments first.
+    // To be safe, let's use the same logic as resolvedDocumentSlots to get the *current* count.
+    
+    // Find the slot definition to check fallbacks efficiently if needed, 
+    // or just rely on what we know about the data structure.
+    // Simplest robust way: check the resolved list if possible or reconstruct it.
+    
+    // Let's reconstruct the current file list for this slot to get accurate count
+    const primaryDocs = ensureArray(project?.documents?.[slotKey]);
+    const fallbackDocs = DOCUMENT_SLOTS.find(s => s.key === slotKey)?.fallbackField 
+        ? ensureArray(project?.[DOCUMENT_SLOTS.find(s => s.key === slotKey).fallbackField]) 
+        : [];
+    const currentFiles = primaryDocs.length > 0 ? primaryDocs : fallbackDocs;
+    
+    console.log(`[Upload Debug] slot=${slotKey}, primary=${primaryDocs.length}, fallback=${fallbackDocs.length}, total_current=${currentFiles.length}`);
+
+    const nextVersionIndex = currentFiles.length + 1; // 1-based versioning (Version 1, Version 2...)
+    
+    // 2. Generate new filename: [slotKey]_v[index].[ext]
+    const originalName = file.name;
+    const lastDotIndex = originalName.lastIndexOf(".");
+    const ext = lastDotIndex !== -1 ? originalName.slice(lastDotIndex) : ""; // includes dot
+    const newName = `${slotKey}_v${nextVersionIndex}${ext}`;
+    
+    // 3. Create new File object
+    const renamedFile = new File([file], newName, { type: file.type });
+
     setDocUploadState({ key: slotKey, error: null });
     try {
-      await apiService.uploadProjectDocument(projectId, slotKey, file);
+      await apiService.uploadProjectDocument(projectId, slotKey, renamedFile);
       // Give Airtable a brief window to finish hosting (especially PDFs) before reloading
       await new Promise((resolve) => setTimeout(resolve, 5000));
       await loadProjectDetails();
@@ -627,6 +732,7 @@ const ProjectDetail = () => {
     if (!projectId || !pdfEditorState.documentType) return;
 
     try {
+      
       // Determine base filename: use metadata filename if available, else parse URL
       let currentFileName = pdfEditorState.filename;
       
@@ -640,36 +746,29 @@ const ProjectDetail = () => {
           ? pdfEditorState.isPdf 
           : currentFileName.toLowerCase().endsWith('.pdf');
           
-      const extMatch = currentFileName.match(/\.([0-9a-z]+)$/i);
-      const originalExt = extMatch ? extMatch[1].toLowerCase() : (isPdf ? 'pdf' : 'png');
       const outputExt = isPdf ? 'pdf' : 'png'; // PdfEditor exports images as PNG
 
-      // Extract base name logic considering version pattern _vX
-      // Regex to match "name_v1.pdf" or "name_v1.jpg"
-      const versionRegex = new RegExp(`_v(\\d+)\\.${originalExt}$`, 'i');
-      const versionMatch = currentFileName.match(versionRegex);
+      // 1. Get current file count for this slot
+      const primaryDocs = ensureArray(project?.documents?.[pdfEditorState.documentType]);
+      const fallbackDocs = DOCUMENT_SLOTS.find(s => s.key === pdfEditorState.documentType)?.fallbackField 
+          ? ensureArray(project?.[DOCUMENT_SLOTS.find(s => s.key === pdfEditorState.documentType).fallbackField]) 
+          : [];
+      const currentFiles = primaryDocs.length > 0 ? primaryDocs : fallbackDocs;
       
-      let baseFileName = currentFileName;
-      if (versionMatch) {
-          baseFileName = currentFileName.replace(versionRegex, '');
-      } else {
-          // Check if it ends with extension and remove it
-          const extRegex = new RegExp(`\\.${originalExt}$`, 'i');
-          baseFileName = currentFileName.replace(extRegex, '');
-      }
-
-      const nextVersion = versionMatch ? parseInt(versionMatch[1]) + 1 : 1;
-      const newFileName = `${baseFileName}_v${nextVersion}.${outputExt}`;
+      const nextVersionIndex = currentFiles.length + 1; // If we edit the latest, we are adding a NEW version on top
+      
+      // 2. Construct new name
+      const newName = `${pdfEditorState.documentType}_v${nextVersionIndex}.${outputExt}`;
 
       // Create File object from blob
       const mimeType = isPdf ? 'application/pdf' : 'image/png';
-      const file = new File([blob], newFileName, { type: mimeType });
+      const file = new File([blob], newName, { type: mimeType });
 
       // Close editor and upload
       setPdfEditorState({ isOpen: false, pdfUrl: null, documentType: null, isPdf: null, filename: null });
 
       // Upload the new version
-      console.log(`Uploading annotated file: ${newFileName}, type: ${mimeType}, size: ${blob.size} bytes`);
+      console.log(`Uploading annotated file: ${newName}, type: ${mimeType}, size: ${blob.size} bytes`);
       await handleDocumentUpload(pdfEditorState.documentType, file);
       
     } catch (error) {
@@ -988,10 +1087,15 @@ const ProjectDetail = () => {
         <div className="space-y-10">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-gray-700">Planting Photos & Before Photos</p>
-              {carouselPhotos.length > 0 ? (
+              <p className="text-sm font-semibold text-gray-700">
+                Planting Photos & Before Photos
+                <span className="ml-2 font-normal text-xs text-gray-400">
+                  (Click to view)
+                </span>
+              </p>
+              {carouselImages.length > 0 ? (
                 <Carousel
-                  images={carouselPhotos}
+                  images={carouselImages}
                   className="mb-4 lg:mb-6"
                   aspectClass="aspect-[4/3] lg:aspect-[3/2]"
                   onImageClick={openLightbox}
@@ -1025,10 +1129,15 @@ const ProjectDetail = () => {
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-gray-700">Landowner Submissions</p>
+              <p className="text-sm font-semibold text-gray-700">
+                Landowner Submissions
+                <span className="ml-2 font-normal text-xs text-gray-400">
+                  (Click to view)
+                </span>
+              </p>
               {landownerPhotos.length > 0 ? (
                 <Carousel
-                  images={landownerPhotos}
+                  images={landownerImages}
                   className="mb-4 lg:mb-6"
                   aspectClass="aspect-[4/3] lg:aspect-[3/2]"
                   onImageClick={openLightbox}
@@ -1185,6 +1294,33 @@ const ProjectDetail = () => {
             </InfoCard>
           </div>
         </div>
+
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-gray-900">What should I expect?</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Seasonal timeline to help landowners prep for each stage.
+          </p>
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            {timelinePhases.map((phase) => (
+              <div
+                key={phase.title}
+                className="rounded-xl bg-green-50/50 p-5 border border-green-100"
+              >
+                <h3 className="text-base font-semibold text-green-900 mb-3">
+                  {phase.title}
+                </h3>
+                <ul className="list-disc pl-5 space-y-2">
+                  {phase.points.map((point, idx) => (
+                    <li key={idx} className="text-sm text-gray-700">
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
             Associated Documents
@@ -1217,7 +1353,9 @@ const ProjectDetail = () => {
         </div>
 
         <div className="mt-10 rounded-2xl bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900">Photo Gallery</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Photo Gallery
+          </h2>
           <p className="mt-1 text-sm text-gray-500">
             Quick view thumbnails from each photo set.
           </p>
@@ -1227,6 +1365,9 @@ const ProjectDetail = () => {
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-gray-800">
                   Planting Photos & Before Photos
+                  <span className="ml-2 font-normal text-xs text-gray-400">
+                    (Click to view)
+                  </span>
                 </p>
                 <span className="text-xs text-gray-500">
                   {combinedPhotos.length} photo{combinedPhotos.length === 1 ? "" : "s"}
@@ -1234,18 +1375,13 @@ const ProjectDetail = () => {
               </div>
               {combinedPhotos.length > 0 ? (
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                  {combinedPhotos.map((url, idx) => (
-                    <div
-                      key={`${url}-${idx}`}
-                      className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50"
-                      onClick={() => openLightbox(url)}
-                    >
-                      <img
-                        src={url}
-                        alt={`Planting or before photo ${idx + 1}`}
-                        className="h-24 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                      />
-                    </div>
+                  {combinedPhotos.map((photo, idx) => (
+                    <MediaGridItem
+                      key={`${typeof photo === 'string' ? photo : photo.url}-${idx}`}
+                      photo={photo}
+                      idx={idx}
+                      openLightbox={openLightbox}
+                    />
                   ))}
                 </div>
               ) : (
@@ -1259,6 +1395,9 @@ const ProjectDetail = () => {
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-gray-800">
                   Landowner Submissions
+                  <span className="ml-2 font-normal text-xs text-gray-400">
+                    (Click to view)
+                  </span>
                 </p>
                 <span className="text-xs text-gray-500">
                   {landownerPhotos.length} photo{landownerPhotos.length === 1 ? "" : "s"}
@@ -1266,18 +1405,13 @@ const ProjectDetail = () => {
               </div>
               {landownerPhotos.length > 0 ? (
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                  {landownerPhotos.map((url, idx) => (
-                    <div
-                      key={`${url}-${idx}`}
-                      className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50"
-                      onClick={() => openLightbox(url)}
-                    >
-                      <img
-                        src={url}
-                        alt={`Landowner submission ${idx + 1}`}
-                        className="h-24 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                      />
-                    </div>
+                  {landownerPhotos.map((photo, idx) => (
+                    <MediaGridItem
+                      key={`${typeof photo === 'string' ? photo : photo.url}-${idx}`}
+                      photo={photo}
+                      idx={idx}
+                      openLightbox={openLightbox}
+                    />
                   ))}
                 </div>
               ) : (
