@@ -2,6 +2,14 @@
 import { apiClient } from './apiClient';
 import { fileToBase64, resetSeasonProjectsCache } from './apiHelpers';
 
+/**
+ * Upload a document to a project.
+ * 
+ * @param {string} projectId - ID of the project
+ * @param {string} documentType - Type key (e.g., 'carbonDocs', 'otherAttachments')
+ * @param {File} file - File object to upload
+ * @returns {Promise<object>} Updated project or response data
+ */
 export const uploadProjectDocument = async (projectId, documentType, file) => {
   if (!projectId) {
     throw new Error('Project ID is required to upload a document.');
@@ -50,6 +58,13 @@ export const uploadProjectDocument = async (projectId, documentType, file) => {
   }
 };
 
+/**
+ * Delete a specific document type or simple document field.
+ * 
+ * @param {string} projectId 
+ * @param {string} documentType 
+ * @returns {Promise<object>} response data
+ */
 export const deleteProjectDocument = async (projectId, documentType) => {
   if (!projectId) {
     throw new Error('Project ID is required to delete a document.');

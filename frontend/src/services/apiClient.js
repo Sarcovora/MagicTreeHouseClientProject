@@ -15,6 +15,13 @@ console.log('API Configuration:', {
   fullURL: `${apiBaseFromEnv}${apiPrefix}`
 });
 
+/**
+ * Axios instance configured for API requests.
+ * 
+ * - Base URL: Configured via environment variables
+ * - Timeout: 45s
+ * - Interceptors: Automatically attaches Firebase auth token if user is signed in
+ */
 export const apiClient = axios.create({
   baseURL: `${apiBaseFromEnv}${apiPrefix}`,
   timeout: 45000,

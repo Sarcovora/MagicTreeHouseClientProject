@@ -2,6 +2,12 @@
 import { apiClient } from './apiClient';
 import { normalizeProjectRecord } from './apiHelpers';
 
+/**
+ * Fetches the PRIMARY project associated with the logged-in landowner.
+ * Used for single-project views.
+ * 
+ * @returns {Promise<object|null>} Normalized project record or null if not found
+ */
 export const getLandownerProject = async () => {
     try {
       const response = await apiClient.get('/projects/my-project');

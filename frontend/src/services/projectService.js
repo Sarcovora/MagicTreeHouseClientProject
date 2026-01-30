@@ -37,6 +37,14 @@ const fetchProjectsBySeasonFromApi = async (seasonYear, { useCache = true } = {}
   return normalizedProjects;
 };
 
+/**
+ * Fetch projects for a specific season.
+ * 
+ * @param {string} seasonYear - The season year (e.g., '2024')
+ * @param {object} options
+ * @param {boolean} [options.forceFresh=false] - If true, bypasses cache
+ * @returns {Promise<Array>} Array of normalized project records
+ */
 export const getProjectsBySeason = async (seasonYear, { forceFresh = false } = {}) => {
   const normalizedSeason = normalizeSeasonKey(seasonYear);
   if (!normalizedSeason) {
@@ -56,6 +64,14 @@ export const getProjectsBySeason = async (seasonYear, { forceFresh = false } = {
   }
 };
 
+/**
+ * Fetch ALL projects across ALL available seasons.
+ * 
+ * USE WITH CAUTION: This can be expensive if there are many seasons/projects.
+ * It iterates through all seasons and fetches projects for each.
+ * 
+ * @returns {Promise<Array>} Flattened array of all projects
+ */
 export const getAllProjects = async () => {
   try {
     const seasons = await getSeasons();
@@ -91,6 +107,15 @@ export const getAllProjects = async () => {
   }
 };
 
+/**
+ * Fetch detailed information for a single project.
+ * 
+ * Checks cache first (if details are complete), otherwise hits API.
+ * Updates cache with the fetched result.
+ * 
+ * @param {string} projectId 
+ * @returns {Promise<object|null>} Project record or null
+ */
 export const getProjectDetails = async (projectId) => {
   if (!projectId) {
     return null;
@@ -125,6 +150,12 @@ export const getProjectDetails = async (projectId) => {
 
 // --- CRUD ---
 
+/**
+ * Create a new project.
+ * 
+ * @param {object} projectData - Project fields
+ * @returns {Promise<object>} The newly created (and normalized) project
+ */
 export const addProject = async (projectData) => {
   if (!projectData || typeof projectData !== 'object') {
     throw new Error('Project data is required to create a project.');
@@ -153,6 +184,13 @@ export const addProject = async (projectData) => {
   }
 };
 
+/**
+ * Update an existing project.
+ * 
+ * @param {string} projectId 
+ * @param {object} projectData - Fields to update
+ * @returns {Promise<object>} The updated project record
+ */
 export const updateProject = async (projectId, projectData) => {
   if (!projectId) {
     throw new Error('Project ID is required to update a project.');
@@ -180,6 +218,12 @@ export const updateProject = async (projectId, projectData) => {
   }
 };
 
+/**
+ * Delete a project.
+ * 
+ * @param {string} projectId 
+ * @returns {Promise<object>} Success response
+ */
 export const deleteProject = async (projectId) => {
   if (!projectId) {
     throw new Error('Project ID is required to delete a project.');
@@ -200,6 +244,13 @@ export const deleteProject = async (projectId) => {
   }
 };
 
+/**
+ * Add a comment to the draft map of a project.
+ * 
+ * @param {string} projectId 
+ * @param {string} comment - The comment text
+ * @returns {Promise<object>} Updated project record
+ */
 export const addDraftMapComment = async (projectId, comment) => {
   try {
     const response = await apiClient.post(`/projects/${projectId}/draft-map/comments`, { comment });

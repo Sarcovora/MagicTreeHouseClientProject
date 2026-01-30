@@ -1,4 +1,11 @@
 // src/services/seasonService.js
+
+/**
+ * Service for managing seasons (years).
+ * 
+ * Seasons are the top-level organization for projects.
+ * @module seasonService
+ */
 import { apiClient } from './apiClient';
 import { resetSeasonProjectsCache } from './apiHelpers';
 
